@@ -1,0 +1,35 @@
+\section{Related Work}
+\label{sec:related}
+\vspace{-1mm}
+
+\paragraph{Multi-Armed Bandits in Education.}
+The multi-armed bandit (MAB) framework has been applied to various educational settings.
+Clement et al.~\cite{clement2015multi} proposed using bandits for pedagogical sequence optimization, treating each learning activity as an arm.
+Liu and Koedinger~\cite{liu2014trading} explored the exploration-exploitation trade-off in the context of practice scheduling.
+Thompson Sampling has been used for A/B testing of instructional strategies~\cite{rafferty2019statistical}, and contextual bandits have been applied to content recommendation in MOOCs~\cite{shaikh2017adaptive}.
+However, most prior work treats the selection problem at the level of individual items or activities rather than knowledge categories, and few explicitly model the temporal dynamics of learning and forgetting.
+In contrast, \ours operates at the category level with explicit Ebbinghaus-inspired forgetting, providing a principled yet interpretable approach to adaptive selection.
+
+\paragraph{Intelligent Tutoring Systems.}
+Intelligent tutoring systems (ITS) have a long history of adapting instruction to individual learners~\cite{anderson1985intelligent,vanlehn2006behavior,vanlehn2011relative}.
+Cognitive tutors based on ACT-R~\cite{anderson2014engaged} use knowledge tracing to model student mastery and select problems accordingly.
+Bayesian Knowledge Tracing (BKT)~\cite{corbett1994knowledge} and its extensions~\cite{yudelson2013individualized} estimate per-skill mastery probabilities and have been widely adopted in practice.
+Deep Knowledge Tracing (DKT)~\cite{piech2015deep} applies recurrent neural networks to model student knowledge from interaction sequences.
+While these systems provide sophisticated student models, their question selection policies are often heuristic (e.g., select the least-mastered skill) without the formal exploration-exploitation guarantees provided by bandit algorithms.
+Our work complements knowledge tracing by providing a principled selection mechanism with known theoretical properties.
+
+\paragraph{Spaced Repetition and Forgetting.}
+The spacing effect---the finding that distributed practice leads to better retention than massed practice---is one of the most robust phenomena in learning science~\cite{ebbinghaus1885memory,cepeda2006distributed}.
+Spaced repetition systems such as Leitner boxes~\cite{leitner1972so} and SuperMemo~\cite{wozniak1995two} schedule review based on estimated memory strength.
+More recent work has developed computational models of forgetting, including the ACT-R memory model~\cite{pavlik2005practice} and neural network approaches~\cite{settles2016trainable}.
+Murre and Dros~\cite{murre2015replication} replicated Ebbinghaus's original forgetting curve experiments, confirming the exponential decay model.
+Our student model incorporates Ebbinghaus-inspired exponential forgetting with a retention floor, which interacts with the UCB selection policy to create a natural spaced repetition effect: categories that decay below a threshold are more likely to be selected by UCB's weakness-targeting mechanism.
+
+\paragraph{Reinforcement Learning for Education.}
+Beyond bandits, full reinforcement learning (RL) has been applied to educational sequencing.
+Doroudi et al.~\cite{doroudi2019where} surveyed RL approaches for instructional policy optimization.
+Gymnasium-based environments~\cite{towers2024gymnasium} have been developed for simulating educational interactions, enabling the application of standard RL algorithms.
+While deep RL methods can learn complex policies, they require large amounts of interaction data and lack the interpretability of simpler approaches.
+Our work bridges the gap between simple heuristics and complex RL by using UCB1---which has provably optimal regret bounds~\cite{auer2002finite,lattimore2020bandit}---in a Gymnasium-compatible environment, enabling future comparison with more complex RL policies.
+
+\textbf{\ours} differentiates itself from prior work by combining three elements rarely found together: (1) a bandit-based selection policy with formal guarantees, (2) explicit modeling of both learning and forgetting dynamics, and (3) a comprehensive evaluation framework that analyzes performance across multiple temporal phases, revealing when adaptive selection provides the greatest benefit.

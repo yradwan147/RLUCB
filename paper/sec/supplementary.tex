@@ -1,0 +1,117 @@
+\setcounter{page}{1}
+
+\renewcommand{\thefigure}{S\arabic{figure}}
+\setcounter{figure}{0}
+\renewcommand{\thesection}{S\arabic{section}}
+\setcounter{section}{0}
+\renewcommand{\thetable}{S\arabic{table}}
+\setcounter{table}{0}
+
+\begin{center}
+\Large\textbf{Adaptive Question Selection via Upper Confidence Bound\\for Efficient Knowledge Acquisition: A Simulation Study}\par
+\vspace{1em}
+\Large Supplementary Material
+\end{center}
+
+\noindent In this supplementary document, we include the following details:
+\begin{itemize}
+    \item \textbf{Section \ref{sec:supp_exp}:} Experimental Details.
+    \item \textbf{Section \ref{sec:supp_results}:} Additional Results.
+    \item \textbf{Section \ref{sec:supp_lim}:} Limitations.
+\end{itemize}
+
+\section{Experimental Details}
+\label{sec:supp_exp}
+
+\paragraph{Hardware and Runtime.}
+All experiments were conducted on a standard consumer laptop (Apple M-series CPU, 16 GB RAM).
+A single experiment run (100 students per group, 10,000 questions per student) completes in under 60 seconds.
+The three replicate runs used seeds 42, 10042, and 20042.
+No GPU was required.
+
+\paragraph{Software Dependencies.}
+The simulation is implemented in Python 3.11 using the following packages: NumPy ($\geq$1.24.0) for numerical computation, Gymnasium ($\geq$0.29.0) for the RL environment interface, Matplotlib ($\geq$3.7.0) and Seaborn ($\geq$0.12.0) for visualization, Pandas ($\geq$2.0.0) for data export, and tqdm ($\geq$4.65.0) for progress reporting.
+
+\paragraph{Student Initialization.}
+Category difficulties $d_i$ are sampled from $\text{Uniform}(0.3, 0.7)$ using the experiment seed, ensuring identical difficulties across both groups.
+Each student's initial knowledge is sampled independently using a per-student seed (base seed + student index), and both groups share the same per-student seeds to ensure identical initial conditions.
+The control group's random selector uses an offset seed (student seed + 1,000,000) to decorrelate selection randomness from student randomness.
+
+\paragraph{UCB Initialization.}
+The UCB selector performs round-robin initialization: any category with zero attempts is selected before the UCB score formula is applied.
+With $C = 6$ categories, this means the first 6 questions for each student cycle through all categories before adaptive selection begins.
+
+\section{Additional Results}
+\label{sec:supp_results}
+
+\paragraph{Knowledge Trajectories.}
+Figure~S\ref{fig:supp_knowledge} shows the full knowledge trajectory for both groups with confidence bands (mean $\pm$ one standard deviation across students).
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/fig1_knowledge_over_time.png}
+    \caption{Average knowledge over time with confidence bands for UCB (green) and Random (red) groups.}
+    \label{fig:supp_knowledge}
+\end{figure}
+
+\paragraph{UCB Advantage Dynamics.}
+Figure~S\ref{fig:supp_advantage} shows the UCB advantage (percentage difference over random) for both overall knowledge and weakest-category knowledge over the full 10,000-question horizon.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/fig3_advantage_over_time.png}
+    \caption{UCB advantage over random selection for overall knowledge and weakest-category knowledge. Positive values indicate UCB superiority.}
+    \label{fig:supp_advantage}
+\end{figure}
+
+\paragraph{Phase Analysis Summary.}
+Figure~S\ref{fig:supp_phase} provides a visual summary of performance across the three temporal phases.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/fig6_phase_analysis.png}
+    \caption{Phase-level comparison of UCB vs.\ Random selection across short-term, mid-term, and long-term phases.}
+    \label{fig:supp_phase}
+\end{figure}
+
+\paragraph{Detailed Timestep Results.}
+Table~S\ref{tab:supp_detailed} provides a fine-grained comparison at 50-question intervals during the critical early phase.
+
+\begin{table}[!ht]
+\caption{Detailed comparison during the short-term phase ($t = 50$ to $t = 500$).}
+\centering
+\scalebox{0.8}{
+\footnotesize
+\begin{tabular}{rcccrccr}
+\toprule
+& \multicolumn{3}{c}{\textbf{Overall Knowledge}} && \multicolumn{3}{c}{\textbf{Weakest Category}} \\
+\cmidrule{2-4} \cmidrule{6-8}
+$t$ & UCB & Random & Adv. && UCB & Random & Adv. \\
+\midrule
+50 & 0.269 & 0.285 & $-5.8\%$ && \textbf{0.132} & 0.107 & $\mathbf{+23.5\%}$ \\
+100 & 0.321 & 0.348 & $-7.6\%$ && \textbf{0.207} & 0.129 & $\mathbf{+60.7\%}$ \\
+150 & 0.384 & 0.407 & $-5.7\%$ && \textbf{0.297} & 0.173 & $\mathbf{+71.3\%}$ \\
+200 & 0.437 & 0.441 & $-1.0\%$ && \textbf{0.366} & 0.224 & $\mathbf{+63.7\%}$ \\
+250 & 0.478 & 0.482 & $-0.9\%$ && \textbf{0.410} & 0.262 & $\mathbf{+56.7\%}$ \\
+300 & 0.506 & 0.505 & $+0.1\%$ && \textbf{0.441} & 0.299 & $\mathbf{+47.5\%}$ \\
+350 & 0.530 & 0.520 & $+1.9\%$ && \textbf{0.466} & 0.321 & $\mathbf{+45.2\%}$ \\
+400 & 0.546 & 0.534 & $+2.2\%$ && \textbf{0.484} & 0.345 & $\mathbf{+40.5\%}$ \\
+450 & 0.559 & 0.543 & $+2.9\%$ && \textbf{0.498} & 0.358 & $\mathbf{+39.1\%}$ \\
+500 & \textbf{0.566} & 0.544 & $\mathbf{+3.9\%}$ && \textbf{0.500} & 0.365 & $\mathbf{+36.8\%}$ \\
+\bottomrule
+\end{tabular}
+}
+\label{tab:supp_detailed}
+\end{table}
+
+\section{Limitations}
+\label{sec:supp_lim}
+
+\begin{itemize}
+    \item \textbf{Simulated students only.} All results are based on simulated students with simplified learning and forgetting dynamics. Real human learning involves complex cognitive processes (motivation, fatigue, prerequisite dependencies) not captured by our model. Validation with actual student data is essential before deployment.
+    \item \textbf{Stationary category difficulties.} We assume fixed category difficulties throughout the experiment. In reality, learning one topic may facilitate or hinder learning in related topics (transfer effects).
+    \item \textbf{Single forgetting model.} We use a simple exponential decay model. More sophisticated forgetting models (e.g., ACT-R memory model, half-life regression) may produce different dynamics.
+    \item \textbf{Limited strategy comparison.} We compare only UCB1 against uniform random selection. Other bandit algorithms (Thompson Sampling, $\varepsilon$-greedy, EXP3) and contextual bandits that incorporate the student's current knowledge state may perform differently.
+    \item \textbf{Fixed hyperparameters.} The exploration parameter $c = \sqrt{2}$ is the standard UCB1 value. Tuning $c$ for educational settings (e.g., higher $c$ for uncertain learners) is an open question.
+    \item \textbf{Category-level granularity.} We select at the category level with 6 categories. Finer-grained selection (individual questions or skills) and larger numbers of categories would test scalability.
+\end{itemize}

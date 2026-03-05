@@ -1,0 +1,88 @@
+\section{Methodology}
+\label{sec:method}
+
+We describe the simulation framework used to evaluate adaptive question selection.
+The framework consists of three components: a student model with learning and forgetting dynamics (\cref{sec:student_model}), two question selection strategies (\cref{sec:selection}), and the experimental design (\cref{sec:exp_design}).
+
+\subsection{Student Model}
+\label{sec:student_model}
+\vspace{-1mm}
+
+Each simulated student maintains a \textbf{knowledge vector} $\mathbf{k} = [k_1, k_2, \ldots, k_C]$, where $k_i \in [0, 1]$ represents the probability of answering correctly in category $i$ and $C = 6$ is the number of knowledge categories.
+Initial knowledge is sampled from a truncated normal distribution:
+\begin{equation}
+    k_i^{(0)} \sim \text{clip}\Big(\mathcal{N}(\mu \cdot d_i,\; \sigma^2),\; 0.05,\; 0.95\Big),
+    \label{eq:init_knowledge}
+\end{equation}
+where $\mu = 0.35$ is the mean knowledge level, $d_i \in [0.3, 0.7]$ is the difficulty of category $i$ (sampled uniformly), and $\sigma = 0.1$.
+When a student is quizzed on category $i$, they answer correctly with probability $k_i$ (Bernoulli trial).
+
+\noindent\textbf{Learning Dynamics.}
+After answering a question in category $i$, knowledge is updated asymptotically:
+\begin{equation}
+    k_i \leftarrow
+    \begin{cases}
+        k_i + \alpha \cdot (1 - k_i), & \text{if correct (asymptotic gain toward 1.0)}, \\
+        k_i - \beta \cdot k_i, & \text{if incorrect (multiplicative penalty)},
+    \end{cases}
+    \label{eq:learning}
+\end{equation}
+where $\alpha = 0.12$ is the learning rate and $\beta = 0.02$ is the incorrect-answer penalty.
+The asymptotic form ensures diminishing returns as knowledge approaches mastery, a well-established property of skill acquisition~\cite{anderson2014engaged}.
+
+\noindent\textbf{Forgetting Dynamics.}
+At each timestep, all categories \emph{not} exposed in that step undergo Ebbinghaus-inspired exponential decay~\cite{ebbinghaus1885memory,murre2015replication}:
+\begin{equation}
+    k_i \leftarrow k_{\text{base}} + (k_i - k_{\text{base}}) \cdot e^{-\lambda},
+    \label{eq:forgetting}
+\end{equation}
+where $k_{\text{base}} = 0.10$ is the retention floor (minimum knowledge that persists) and $\lambda = 0.01$ is the decay rate per timestep.
+This model captures the key property that knowledge decays toward a baseline over time without reinforcement, with the decay rate compounding naturally over consecutive unexposed timesteps.
+
+\subsection{Question Selection Strategies}
+\label{sec:selection}
+\vspace{-1mm}
+
+We compare two selection strategies in a between-subjects simulation design:
+
+\noindent\textbf{UCB Selection (Adaptive).}
+The next category to quiz is selected by maximizing the UCB1 score:
+\begin{equation}
+    \text{UCB}(i) = \underbrace{(1 - r_i)}_{\text{exploitation}} + \underbrace{c \cdot \sqrt{\frac{\ln N}{n_i}}}_{\text{exploration}},
+    \label{eq:ucb}
+\end{equation}
+where $r_i$ is the cumulative correctness rate for category $i$, $N$ is the total number of questions asked, $n_i$ is the number of attempts on category $i$, and $c = \sqrt{2} \approx 1.414$ is the exploration parameter.
+The exploitation term $(1 - r_i)$ inverts the standard reward maximization: categories with \emph{lower} correctness rates receive \emph{higher} priority, directing practice toward weak areas.
+The exploration term encourages probing under-tested categories, ensuring no topic is neglected.
+Any category with $n_i = 0$ is selected first (round-robin initialization).
+
+\noindent\textbf{Random Selection (Control).}
+Categories are selected uniformly at random with probability $\nicefrac{1}{C}$ each.
+This serves as a strong baseline representing the default behavior of most quiz platforms.
+
+\subsection{Experimental Design}
+\label{sec:exp_design}
+\vspace{-1mm}
+
+\begin{wraptable}[16]{r}{0.48\textwidth}
+  \centering
+  \vspace{-5mm}
+  \caption{Simulation parameters.}
+  \input{tables/config}
+  \label{tab:config}
+\end{wraptable}
+
+The experiment simulates two groups of students---UCB and Control (Random)---under identical initial conditions to isolate the effect of the selection strategy.
+Both groups share the same initial knowledge distributions and random seeds per student, differing only in question selection.
+Each group contains \textbf{100} students who each answer \textbf{10,000} questions across \textbf{6} knowledge categories.
+The complete parameter set is given in \cref{tab:config}.
+
+Each student has an individual UCB selector (or random selector), maintaining per-student statistics.
+At each timestep, the selector chooses a category, the student answers (Bernoulli trial based on current knowledge), knowledge is updated via \cref{eq:learning}, the selector state is updated, and forgetting is applied to all unexposed categories via \cref{eq:forgetting}.
+
+Group-level metrics are recorded at every timestep: mean knowledge across students, per-category knowledge, weakest-category knowledge (minimum across categories per student, averaged across students), knowledge variance, cumulative accuracy, and exposure distribution.
+The experiment is replicated across 3 independent runs with different random seeds to verify robustness.
+All results are analyzed across three temporal phases: \textbf{short-term} ($t \leq 500$), \textbf{mid-term} ($500 < t \leq 2{,}000$), and \textbf{long-term} ($t > 2{,}000$).
+
+The simulation is implemented in Python using NumPy~\cite{harris2020array} for numerical computation and Gymnasium~\cite{towers2024gymnasium} as the RL environment interface.
+The environment exposes the student's knowledge vector as the observation space and the category index as the action space, enabling future integration with standard RL algorithms.

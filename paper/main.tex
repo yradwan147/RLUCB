@@ -1,0 +1,163 @@
+\documentclass{article}
+
+% --- Submission mode (choose ONE) ---
+\usepackage[preprint]{neurips_2025}
+% \usepackage{neurips_2025}          % anonymous submission
+% \usepackage[final]{neurips_2025}   % camera-ready
+
+% === Core packages ===
+\usepackage[utf8]{inputenc}    % allow utf-8 input
+\usepackage[T1]{fontenc}       % use 8-bit T1 fonts
+\usepackage{hyperref}          % hyperlinks
+\usepackage{url}               % simple URL typesetting
+\usepackage{booktabs}          % professional-quality tables
+\usepackage{amsfonts}          % blackboard math symbols
+\usepackage{amsmath}           % math environments
+\usepackage{amssymb}           % math symbols
+\usepackage{nicefrac}          % compact symbols for 1/2, etc.
+\usepackage{microtype}         % microtypography
+\usepackage{xcolor}            % colors
+\usepackage{caption}           % caption control
+
+% === Figure and table packages ===
+\usepackage{graphicx}
+\graphicspath{{figs/}}
+\usepackage{subcaption}        % subfigures
+\usepackage{wrapfig}           % wrapped figures/tables
+\usepackage{multirow}          % multi-row table cells
+\usepackage{makecell}          % line breaks in table cells
+\usepackage{colortbl}          % colored table rows
+
+% === Cross-referencing ===
+\usepackage[capitalize,noabbrev]{cleveref}
+
+% === Checkmarks for comparison tables ===
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+
+% === Highlight color for "ours" row ===
+\definecolor{blond}{rgb}{0.98, 0.94, 0.75}
+
+% === Method name macro ===
+\newcommand{\ours}{UCB-Quiz\xspace}
+\usepackage{xspace}
+
+% === Stat macros ===
+\newcommand{\numstudents}{100\xspace}
+\newcommand{\numcategories}{6\xspace}
+\newcommand{\numquestions}{10{,}000\xspace}
+\newcommand{\peakweakest}{60.7\%\xspace}
+\newcommand{\peakoverall}{3.9\%\xspace}
+
+% === Author block ===
+\title{Adaptive Question Selection via Upper Confidence Bound\\for Efficient Knowledge Acquisition: A Simulation Study}
+
+\author{%
+\textbf{Yousef Radwan}\\
+Independent Researcher
+}
+
+\begin{document}
+\maketitle
+
+\input{sec/0_abstract}
+\input{sec/1_intro}
+\input{sec/2_related}
+\input{sec/3_method}
+\input{sec/4_experiments}
+\input{sec/5_conclusion}
+
+\newpage
+{\small
+\bibliographystyle{unsrt}
+\bibliography{refs}
+}
+
+\newpage
+\input{sec/supplementary}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section*{NeurIPS Paper Checklist}
+
+\begin{enumerate}
+
+\item {\bf Claims}
+    \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: All claims are supported by simulation results presented in \cref{sec:experiments}. We clearly state the simulation-based nature of the study.
+
+\item {\bf Limitations}
+    \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Limitations are discussed in \cref{sec:conclusion} and Section~S3 of the supplementary material, including the use of simulated (not real) students and simplified learning dynamics.
+
+\item {\bf Theory Assumptions and Proofs}
+    \item[] Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (correct) proof?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: This is an empirical simulation study. We reference the theoretical foundations of UCB1 from prior work~\cite{auer2002finite}.
+
+\item {\bf Experimental Result Reproducibility}
+    \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: All simulation parameters are reported in \cref{sec:method}, the random seed is fixed at 42, and we provide complete source code.
+
+\item {\bf Open Access to Data and Code}
+    \item[] Question: Does the paper provide open access to the data and code, with sufficient instructions to faithfully reproduce the main experimental results?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: The complete source code, experiment runner, and result data will be released on GitHub.
+
+\item {\bf Experimental Setting/Details}
+    \item[] Question: Does the paper specify all the training and test details necessary to understand the results?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: All parameters (learning rate, decay rate, exploration constant, population size, number of questions) are specified in \cref{tab:config} and \cref{sec:method}.
+
+\item {\bf Experiment Statistical Significance}
+    \item[] Question: Does the paper report error bars suitably and correctly defined or other appropriate information about the statistical significance of the experiments?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: We report standard deviations across the student population and analyze results across three independent runs with different seeds.
+
+\item {\bf Experiments Compute Resources}
+    \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources needed to reproduce the experiment?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Computational requirements are minimal (standard CPU, under 1 minute per run) and are described in the supplementary material.
+
+\item {\bf Code of Ethics}
+    \item[] Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS Code of Ethics?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: This simulation study uses no real student data and raises no ethical concerns.
+
+\item {\bf Broader Impacts}
+    \item[] Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: We discuss the potential for more efficient personalized learning and note the need for validation with real students before deployment.
+
+\item {\bf Safeguards}
+    \item[] Question: Does the paper describe safeguards that have been put in place for responsible release of data or models?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: The released code is a simulation framework with no potential for misuse.
+
+\item {\bf Licenses for Existing Assets}
+    \item[] Question: Are the creators or original owners of assets used in the paper properly credited?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: We cite the Gymnasium framework~\cite{towers2024gymnasium} and all algorithmic foundations.
+
+\item {\bf New Assets}
+    \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: The simulation framework includes documentation, a README, and CLI help.
+
+\item {\bf Crowdsourcing and Research with Human Subjects}
+    \item[] Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: No human subjects were involved; all students are simulated.
+
+\item {\bf Declaration of LLM usage}
+    \item[] Question: Does the paper describe the usage of LLMs in the research process?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: An LLM (Claude) was used to assist with paper writing and code documentation. No LLMs were used in the experimental methodology or data generation.
+
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,9 @@
+\begin{abstract}
+\label{sec:abstract-sec}
+Efficient allocation of practice questions is a fundamental challenge in adaptive learning systems, where students have limited time and heterogeneous knowledge across topics.
+We introduce \textbf{\ours}, an adaptive question selection strategy that applies the Upper Confidence Bound (UCB1) algorithm---originally developed for the multi-armed bandit problem---to dynamically prioritize knowledge categories where students struggle most.
+In a controlled simulation with \textbf{\numstudents} students per group across \textbf{\numcategories} knowledge categories and \textbf{\numquestions} questions per session, we compare \ours against uniform random selection under realistic learning and Ebbinghaus-inspired forgetting dynamics.
+Our key finding is that \ours provides \emph{dramatically faster improvement in weak knowledge areas}, achieving up to $\mathbf{60.7\%}$ higher performance in a student's weakest category at $t{=}100$ and maintaining a $\mathbf{36.8\%}$ advantage at $t{=}500$.
+While both strategies converge to similar knowledge ceilings given sufficient practice (${\sim}$10,000 questions), \ours reaches competitive knowledge levels in $\mathbf{3{\times}}$ fewer questions, demonstrating that its value lies in \emph{learning efficiency} rather than ultimate performance.
+We release our simulation framework and experimental data to support further research in bandit-based adaptive education.
+\end{abstract}

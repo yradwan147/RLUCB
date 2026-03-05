@@ -1,0 +1,33 @@
+\section{Introduction}
+\label{sec:intro}
+\vspace{-1mm}
+
+Personalized learning has emerged as a central goal of modern educational technology, driven by the recognition that students learn at different rates and have heterogeneous knowledge profiles across topics~\cite{vanlehn2011relative,corbett1994knowledge,anderson2014engaged}.
+Intelligent tutoring systems (ITS) have long sought to adapt instructional content to individual learners~\cite{anderson1985intelligent,vanlehn2006behavior}, yet the question of \emph{which topic to quiz next} remains a fundamental challenge in adaptive learning.
+In most educational platforms, questions are either selected uniformly at random or follow a fixed curriculum sequence, neither of which accounts for a student's evolving strengths and weaknesses~\cite{doroudi2019where}.
+This inefficiency is particularly costly when study time is limited: a student preparing for an exam with constrained practice time needs questions that target their weakest areas, not topics they have already mastered.
+The core challenge is to balance \emph{exploitation}---focusing on known weak areas---with \emph{exploration}---probing less-tested topics to discover hidden gaps.
+
+This exploration-exploitation trade-off is precisely the problem addressed by multi-armed bandit (MAB) algorithms~\cite{auer2002finite,lattimore2020bandit}.
+In the MAB framework, an agent repeatedly selects among $K$ arms (actions) to maximize cumulative reward, balancing the desire to exploit the best-known arm against the need to explore uncertain alternatives.
+The Upper Confidence Bound (UCB1) algorithm~\cite{auer2002finite} provides an elegant solution with provably optimal regret bounds.
+Despite the natural correspondence between bandit problems and adaptive question selection---where each knowledge category is an ``arm'' and the reward signal reflects learning need---surprisingly little work has applied UCB directly to educational quizzing with explicit modeling of learning and forgetting dynamics~\cite{clement2015multi,liu2014trading}.
+Existing approaches either focus on item response theory without temporal dynamics or employ complex reinforcement learning methods that lack the interpretability of bandit solutions.
+
+We introduce \textbf{\ours}, an adaptive question selection strategy that applies UCB1 to dynamically choose which knowledge category to quiz a student on next.
+The key insight is to invert the standard UCB objective: instead of maximizing reward (correctness), \ours maximizes a \emph{weakness score} $(1 - r_i)$ plus an exploration bonus, thereby prioritizing categories where the student performs poorly while maintaining coverage of under-tested topics.
+We evaluate \ours in a controlled simulation environment with \textbf{\numstudents} students per group, \textbf{\numcategories} knowledge categories, and \textbf{\numquestions} questions per session, incorporating realistic learning dynamics (asymptotic knowledge gain) and Ebbinghaus-inspired exponential forgetting~\cite{ebbinghaus1885memory,murre2015replication}.
+We analyze results across three temporal phases:
+\textbf{(1) Short-term} ($t \leq 500$): initial learning and exploration.
+\textbf{(2) Mid-term} ($500 < t \leq 2{,}000$): knowledge consolidation.
+\textbf{(3) Long-term} ($t > 2{,}000$): saturation and convergence.
+
+Our experiments reveal that \ours provides dramatic advantages in time-constrained settings: at $t{=}100$, the weakest knowledge category under \ours is $\mathbf{60.7\%}$ higher than under random selection, and this advantage persists at $\mathbf{36.8\%}$ at $t{=}500$ (\cref{tab:weakest}).
+UCB leads in overall knowledge by $\mathbf{+3.9\%}$ at $t{=}500$ and dominates weakest-category performance for $\mathbf{53.5\%}$ of all timesteps.
+However, given sufficient practice (${\sim}$10,000 questions), random selection converges to comparable overall knowledge levels, confirming that \ours's value lies in \emph{efficiency}---reaching good performance faster---rather than raising the ultimate knowledge ceiling.
+
+In summary, the contributions of this paper include:
+(1) \textbf{UCB-based adaptive question selection}: We formulate educational question selection as a multi-armed bandit problem and apply UCB1 with an inverted reward signal to prioritize weak knowledge areas.
+(2) \textbf{Realistic student simulation}: We develop a simulation framework with asymptotic learning dynamics and Ebbinghaus-inspired forgetting, implemented as a Gymnasium~\cite{towers2024gymnasium} reinforcement learning environment.
+(3) \textbf{Comprehensive empirical analysis}: We conduct a controlled experiment with 100 students per group over 10,000 questions, analyzing performance across three temporal phases with multiple metrics.
+(4) \textbf{Open-source framework}: We release the complete simulation code, experiment runner, and visualization tools to facilitate further research in bandit-based adaptive education.

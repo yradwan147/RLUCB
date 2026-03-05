@@ -1,0 +1,105 @@
+\section{Experiments}
+\label{sec:experiments}
+
+We evaluate \ours against random selection across four dimensions: overall knowledge acquisition (\cref{sec:overall}), weakest-category protection (\cref{sec:weakest}), phase-level analysis (\cref{sec:phases}), and category-level behavior (\cref{sec:category}).
+
+\subsection{Overall Knowledge Acquisition}
+\label{sec:overall}
+\vspace{-1mm}
+
+\begin{wraptable}[15]{r}{0.52\textwidth}
+  \centering
+  \vspace{-5mm}
+  \caption{Average knowledge at key timesteps. Bold indicates superior performance.}
+  \input{tables/overall}
+  \label{tab:overall}
+\end{wraptable}
+
+\cref{tab:overall} reports the mean knowledge across all students and categories at selected timesteps.
+UCB achieves higher average knowledge during the short-to-mid term, peaking at $\mathbf{+3.9\%}$ advantage at $t{=}500$.
+The crossover occurs around $t{=}2{,}500$: beyond this point, random selection achieves marginally higher overall knowledge.
+
+\noindent\textbf{Results}: UCB's initial disadvantage at $t{=}100$ ($-7.6\%$) reflects its aggressive exploration of weak categories, which temporarily sacrifices overall accuracy.
+By $t{=}500$, this investment pays off as UCB surpasses random in overall knowledge.
+The peak advantage of $\mathbf{+2.3\%}$ occurs at $t \approx 470$.
+UCB leads in overall knowledge for $21.2\%$ of all timesteps, concentrated in the first 2,000 questions.
+Given sufficient practice (${\sim}$10,000 questions), random selection converges to $0.562$ average knowledge compared to UCB's $0.536$, a reversal of $-4.6\%$.
+This convergence is expected: with ${\sim}$1,667 questions per category under random allocation, even uniform coverage provides adequate practice for all topics.
+
+\subsection{Weakest Category Protection}
+\label{sec:weakest}
+\vspace{-1mm}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=1\linewidth]{figs/fig2_weakest_category.png}
+    \caption{Weakest category knowledge over time. \ours (green) provides dramatically faster improvement in a student's worst-performing category, with the advantage most pronounced in the first 1,000 questions.}
+    \label{fig:weakest}
+\end{figure}
+
+The most striking advantage of \ours is in \textbf{weakest-category protection}---the knowledge level in each student's lowest-performing category.
+\cref{tab:weakest} reports these results, and \cref{fig:weakest} visualizes the full trajectory.
+
+\begin{table}[!t]
+\caption{Weakest category knowledge at key timesteps. \ours achieves up to $\mathbf{60.7\%}$ higher performance in students' weakest areas during the short term.}
+\input{tables/weakest}
+\vspace{-2mm}
+\label{tab:weakest}
+\end{table}
+
+\noindent\textbf{Results}: At $t{=}100$, the weakest category under UCB has knowledge $0.207$ compared to $0.129$ under random---a $\mathbf{60.7\%}$ advantage.
+This gap narrows over time but remains substantial: $+56.7\%$ at $t{=}250$, $+36.8\%$ at $t{=}500$, and $+25.2\%$ at $t{=}1{,}000$.
+UCB leads in weakest-category performance for $\mathbf{53.5\%}$ of all timesteps.
+The advantage erodes after $t{=}5{,}000$ as random selection eventually provides enough practice to raise all categories.
+At $t{=}10{,}000$, random slightly leads ($-8.2\%$), reflecting UCB's tendency to create temporary imbalances during extended practice.
+
+\subsection{Phase Analysis}
+\label{sec:phases}
+\vspace{-1mm}
+
+\begin{wraptable}[11]{r}{0.55\textwidth}
+  \centering
+  \vspace{-5mm}
+  \caption{Performance comparison by temporal phase.}
+  \input{tables/phases}
+  \label{tab:phases}
+\end{wraptable}
+
+\cref{tab:phases} summarizes performance by temporal phase.
+\ours clearly dominates in the short-term and mid-term phases, providing both higher overall knowledge and dramatically better weakest-category protection.
+In the long-term, random selection gains a small edge as both strategies saturate.
+
+The phase analysis reveals a key insight: \emph{\ours's value lies in learning efficiency, not ultimate performance ceiling}.
+Both strategies reach similar knowledge levels (${\sim}$0.55--0.59), but UCB reaches this level in approximately 500--1,000 questions compared to 2,000--3,000 for random selection.
+For practical educational settings where study time is limited, this $3{\times}$ efficiency gain is substantial.
+
+\subsection{Category-Level Analysis}
+\label{sec:category}
+\vspace{-1mm}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=1\linewidth]{figs/fig4_category_heatmaps.png}
+    \caption{Per-category knowledge evolution over time. UCB (left) produces more uniform knowledge across categories, while Random (right) shows greater inter-category variance, particularly in the early phases.}
+    \label{fig:heatmaps}
+\end{figure}
+
+\cref{fig:heatmaps} shows per-category knowledge heatmaps for both groups.
+UCB produces visibly more uniform coloring across categories, indicating balanced learning.
+Random selection shows higher inter-category variance early on, with some categories advancing much faster than others.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=1\linewidth]{figs/fig5_exposure_distribution.png}
+    \caption{Cumulative exposure distribution across categories. Both strategies converge to roughly equal exposure by $t{=}10{,}000$; the key difference is \emph{timing}---UCB front-loads exposure to weak categories.}
+    \label{fig:exposure}
+\end{figure}
+
+\cref{fig:exposure} shows the exposure distribution.
+Both groups end with roughly equal exposure per category after 10,000 questions, confirming that UCB's advantage comes not from different total allocation but from \emph{temporal reordering}---front-loading exposure to categories that need it most.
+This front-loading creates an implicit spaced repetition effect: weak categories receive early intensive practice, then natural forgetting dynamics and UCB's exploration bonus ensure periodic revisitation.
+
+\noindent\textbf{Final Category Statistics.}
+At termination ($t{=}10{,}000$), UCB shows a knowledge range of $0.411$ (min $0.358$, max $0.769$) compared to Random's range of $0.320$ (min $0.390$, max $0.710$).
+Paradoxically, random selection achieves lower final variance (std $0.123$) than UCB (std $0.166$).
+This occurs because UCB's aggressive early focus on weak categories creates temporary imbalances that persist into the long-term phase, while random selection's uniform allocation naturally produces more uniform final knowledge.
