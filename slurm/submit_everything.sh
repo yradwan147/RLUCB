@@ -6,9 +6,9 @@
 #   2. Real data: bash scripts/download_data.sh all
 #
 # This submits:
-#   - 1000 synthetic sweep jobs (submit_all.sh)
-#   - 10 real data jobs (submit_real_data.sh)
-#   Total: 1010 jobs
+#   - 36 synthetic sweep jobs (submit_all.sh) — each runs all 10 algorithms
+#   - 6 real data jobs (submit_real_data.sh)
+#   Total: 42 jobs
 set -e
 
 echo "============================================="
@@ -25,12 +25,12 @@ echo "Dependencies installed."
 echo ""
 
 # Synthetic sweep
-echo "--- Synthetic sweep (1000 jobs) ---"
+echo "--- Synthetic sweep (36 jobs, each runs all 10 algos) ---"
 bash slurm/submit_all.sh
 echo ""
 
 # Real data
-echo "--- Real data experiments (10 jobs) ---"
+echo "--- Real data experiments (6 jobs) ---"
 bash slurm/submit_real_data.sh
 echo ""
 

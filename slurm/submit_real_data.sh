@@ -5,12 +5,12 @@
 #   1. Download data first: bash scripts/download_data.sh all
 #   2. Data should be in data/duolingo/ and data/assistments/
 #
-# Total jobs: 2 datasets × 5 seeds × 1 mode = 10 jobs
+# Total jobs: 2 datasets × 3 seeds = 6 jobs
 set -e
 
 mkdir -p slurm/slurm_logs results/real_data
 
-SEEDS="42 123 456 789 1024"
+SEEDS="42 123 456"
 DATASETS="duolingo assistments"
 
 COUNT=0
