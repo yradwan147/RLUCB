@@ -1,9 +1,9 @@
 #!/bin/bash --login
 #SBATCH --partition=batch
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=32G
-#SBATCH --time=8:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=4:00:00
 #SBATCH --output=slurm/slurm_logs/%x_%J.out
 
 # Runs ALL 10 algorithms for a single (K, decay, seed) config.

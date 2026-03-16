@@ -2,8 +2,8 @@
 #SBATCH --partition=batch
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
-#SBATCH --time=24:00:00
+#SBATCH --mem=32G
+#SBATCH --time=8:00:00
 #SBATCH --output=slurm/slurm_logs/%x_%J.out
 
 # Usage: sbatch -J <job_name> slurm/run_real_data.sh <dataset> <seed> [replay_only|sim_only|both]
