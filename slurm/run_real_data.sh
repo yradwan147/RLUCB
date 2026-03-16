@@ -13,7 +13,7 @@ SEED=${2:?"Seed required"}
 MODE=${3:-both}  # replay_only, sim_only, or both
 
 eval "$(~/miniconda3/bin/conda shell.bash hook)"
-conda activate rlucb
+conda activate chessgcn
 
 cd $SLURM_SUBMIT_DIR
 

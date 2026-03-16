@@ -16,7 +16,7 @@ NUM_STUDENTS=${5:-100}
 QUESTIONS=${6:-10000}
 
 eval "$(~/miniconda3/bin/conda shell.bash hook)"
-conda activate rlucb
+conda activate chessgcn
 
 cd $SLURM_SUBMIT_DIR
 

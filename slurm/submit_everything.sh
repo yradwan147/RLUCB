@@ -2,7 +2,7 @@
 # Submit ALL experiments to IBEX cluster — synthetic sweep + real data.
 #
 # Prerequisites:
-#   1. conda env: conda env create -f environment.yml
+#   1. Install deps: conda activate chessgcn && pip install -r requirements.txt
 #   2. Real data: bash scripts/download_data.sh all
 #
 # This submits:
@@ -14,6 +14,14 @@ set -e
 echo "============================================="
 echo "Submitting ALL experiments to IBEX"
 echo "============================================="
+echo ""
+
+# Install dependencies into chessgcn env
+echo "--- Installing dependencies into chessgcn ---"
+eval "$(~/miniconda3/bin/conda shell.bash hook)"
+conda activate chessgcn
+pip install -r requirements.txt --quiet
+echo "Dependencies installed."
 echo ""
 
 # Synthetic sweep
