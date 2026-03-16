@@ -16,19 +16,23 @@ download_duolingo() {
         return
     fi
 
-    # Harvard Dataverse direct download
+    # Harvard Dataverse direct download (file ID: 3091087)
     echo "Downloading from Harvard Dataverse (361 MB compressed)..."
-    wget -O "$DUOLINGO_DIR/learning_traces.13m.csv.gz" \
-        "https://dataverse.harvard.edu/api/access/datafile/5597065" \
-        --no-check-certificate 2>/dev/null || \
-    curl -L -o "$DUOLINGO_DIR/learning_traces.13m.csv.gz" \
-        "https://dataverse.harvard.edu/api/access/datafile/5597065"
+    wget -O "$DUOLINGO_DIR/settles.acl16.learning_traces.13m.csv.gz" \
+        "https://dataverse.harvard.edu/api/access/datafile/3091087" \
+        --no-check-certificate 2>&1 || \
+    curl -L -o "$DUOLINGO_DIR/settles.acl16.learning_traces.13m.csv.gz" \
+        "https://dataverse.harvard.edu/api/access/datafile/3091087"
 
-    echo "Decompressing..."
-    gunzip "$DUOLINGO_DIR/learning_traces.13m.csv.gz" 2>/dev/null || \
-    gzip -d "$DUOLINGO_DIR/learning_traces.13m.csv.gz"
-    mv "$DUOLINGO_DIR/learning_traces.13m.csv" \
-       "$DUOLINGO_DIR/settles.acl16.learning_traces.13m.csv" 2>/dev/null || true
+    # Verify it's actually gzip
+    if file "$DUOLINGO_DIR/settles.acl16.learning_traces.13m.csv.gz" | grep -q "gzip"; then
+        echo "Decompressing..."
+        gunzip "$DUOLINGO_DIR/settles.acl16.learning_traces.13m.csv.gz"
+    else
+        echo "WARNING: Downloaded file is not gzip. Checking if it's already CSV..."
+        mv "$DUOLINGO_DIR/settles.acl16.learning_traces.13m.csv.gz" \
+           "$DUOLINGO_DIR/settles.acl16.learning_traces.13m.csv"
+    fi
 
     echo "Duolingo download complete."
     ls -lh "$DUOLINGO_DIR/"
@@ -44,17 +48,27 @@ download_assistments() {
         return
     fi
 
-    # Direct download from ASSISTments data site
-    echo "Downloading ASSISTments 2012-2013 dataset..."
-    wget -O "$ASSIST_DIR/2012-2013-data-with-predictions-4-final.csv.zip" \
-        "https://sites.google.com/site/assistmentsdata/datasets/2012-13-school-data-with-affect/2012-2013-data-with-predictions-4-final.csv.zip?attredirects=0&d=1" \
-        --no-check-certificate 2>/dev/null || \
-    curl -L -o "$ASSIST_DIR/2012-2013-data-with-predictions-4-final.csv.zip" \
-        "https://drive.google.com/uc?export=download&id=0B5sVDqq4sGXUY2VYZmZyb3lFckk"
+    # Google Drive download (file ID: 1cU6Ft4R3hLqA7G1rIGArVfelSZvc6RxY)
+    GDRIVE_ID="1cU6Ft4R3hLqA7G1rIGArVfelSZvc6RxY"
+    echo "Downloading ASSISTments 2012-2013 from Google Drive..."
 
-    echo "Unzipping..."
-    cd "$ASSIST_DIR" && unzip -o "2012-2013-data-with-predictions-4-final.csv.zip" 2>/dev/null || true
-    cd - > /dev/null
+    # gdown handles Google Drive large-file confirmation prompts
+    if command -v gdown &> /dev/null; then
+        gdown "$GDRIVE_ID" -O "$ASSIST_DIR/2012-2013-data-with-predictions-4-final.csv"
+    else
+        echo "Installing gdown for Google Drive download..."
+        pip install gdown --quiet
+        gdown "$GDRIVE_ID" -O "$ASSIST_DIR/2012-2013-data-with-predictions-4-final.csv"
+    fi
+
+    # If downloaded as zip, unzip it
+    if file "$ASSIST_DIR/2012-2013-data-with-predictions-4-final.csv" | grep -q "Zip\|zip"; then
+        echo "File is zipped, extracting..."
+        mv "$ASSIST_DIR/2012-2013-data-with-predictions-4-final.csv" \
+           "$ASSIST_DIR/2012-2013-data-with-predictions-4-final.csv.zip"
+        cd "$ASSIST_DIR" && unzip -o "2012-2013-data-with-predictions-4-final.csv.zip"
+        cd - > /dev/null
+    fi
 
     echo "ASSISTments download complete."
     ls -lh "$ASSIST_DIR/"
