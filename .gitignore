@@ -29,3 +29,11 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Experiment outputs
+results/
+data/
+slurm/slurm_logs/
+
+# Large files
+*.pdf

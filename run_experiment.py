@@ -21,7 +21,11 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from experiment.config import ExperimentConfig
-from experiment.simulation import Experiment, run_multiple_experiments
+from experiment.simulation import (
+    Experiment, run_multiple_experiments,
+    MultiAlgorithmExperiment, MultiAlgorithmResults,
+)
+from experiment.selectors import SELECTOR_REGISTRY
 from experiment.visualization import (
     plot_knowledge_comparison,
     plot_category_heatmaps,
@@ -144,21 +148,54 @@ def parse_args():
         default=1,
         help="Number of experiment runs (for statistical analysis)",
     )
-    
+
+    # Algorithm selection (multi-algorithm mode)
+    parser.add_argument(
+        "--algorithm", "-a",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Algorithm(s) to run. Available: {}. "
+             "If not specified, runs legacy UCB vs Random mode.".format(
+                 ", ".join(SELECTOR_REGISTRY.keys())
+             ),
+    )
+    parser.add_argument(
+        "--all-algorithms",
+        action="store_true",
+        help="Run all available algorithms",
+    )
+    parser.add_argument(
+        "--num-students",
+        type=int,
+        default=None,
+        help="Alias for --students (for CLI compatibility)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Alias for --output (for CLI compatibility)",
+    )
+
     return parser.parse_args()
 
 
 def main():
     """Main entry point."""
     args = parse_args()
-    
+
+    # Handle aliases
+    num_students = args.num_students if args.num_students else args.students
+    output_path = args.output_dir if args.output_dir else args.output
+
     # Create output directory
-    output_dir = Path(args.output)
+    output_dir = Path(output_path)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create configuration
     config = ExperimentConfig(
-        num_students_per_group=args.students,
+        num_students_per_group=num_students,
         num_categories=args.categories,
         initial_knowledge_mean=0.3,
         initial_knowledge_std=0.1,
@@ -170,10 +207,20 @@ def main():
         exploration_param=args.exploration,
         random_seed=args.seed,
     )
-    
+
+    # Determine algorithms to run
+    algorithms = None
+    if args.all_algorithms:
+        algorithms = list(SELECTOR_REGISTRY.keys())
+    elif args.algorithm:
+        algorithms = args.algorithm
+
     if not args.quiet:
         print("=" * 60)
-        print("UCB vs Random Quizzing Experiment")
+        if algorithms:
+            print("Multi-Algorithm Adaptive Quizzing Experiment")
+        else:
+            print("UCB vs Random Quizzing Experiment")
         print("=" * 60)
         print()
         print("Configuration:")
@@ -184,41 +231,66 @@ def main():
         print(f"  Decay rate: {config.decay_rate}")
         print(f"  UCB exploration: {config.exploration_param}")
         print(f"  Random seed: {config.random_seed}")
+        if algorithms:
+            print(f"  Algorithms: {algorithms}")
         print()
-    
-    # Run experiment(s)
+
+    # Multi-algorithm mode
+    if algorithms:
+        exp = MultiAlgorithmExperiment(config, algorithms)
+        results = exp.run(show_progress=not args.quiet)
+
+        if not args.quiet:
+            print("\nResults:")
+            print("{:20s} | {:>14s} | {:>12s} | {:>10s}".format(
+                "Algorithm", "Avg Knowledge", "Weakest Cat", "Accuracy"))
+            print("-" * 65)
+            for algo in algorithms:
+                final = results.metrics[algo][-1]
+                total = final.cumulative_correct + final.cumulative_incorrect
+                acc = final.cumulative_correct / total if total > 0 else 0
+                print("{:20s} | {:14.4f} | {:12.4f} | {:10.4f}".format(
+                    algo, final.average_knowledge, final.weakest_category_avg, acc))
+
+        # Export CSV
+        csv_path = output_dir / "experiment_results.csv"
+        results.save_to_csv(str(csv_path))
+        if not args.quiet:
+            print(f"\nResults saved to: {csv_path}")
+
+        return 0
+
+    # Legacy UCB vs Random mode
     if args.runs > 1:
         if not args.quiet:
             print(f"Running {args.runs} experiments...")
         results_list = run_multiple_experiments(
-            config, 
+            config,
             num_runs=args.runs,
             show_progress=not args.quiet,
         )
-        # Use first result for visualization
         results = results_list[0]
-        
         if not args.quiet:
             print(f"\nCompleted {args.runs} experiment runs.")
     else:
         experiment = Experiment(config)
         results = experiment.run(show_progress=not args.quiet)
-    
+
     # Print summary
     if not args.quiet:
         print()
         print(print_summary_statistics(results))
-    
+
     # Export CSV if requested
     if args.csv:
         csv_path = output_dir / "experiment_results.csv"
         results.save_to_csv(str(csv_path))
         if not args.quiet:
             print(f"\nResults saved to: {csv_path}")
-    
+
     # Generate visualizations
     import matplotlib.pyplot as plt
-    
+
     if args.dashboard:
         if not args.quiet:
             print("\nGenerating dashboard...")
@@ -226,68 +298,32 @@ def main():
         create_dashboard(results, save_path=str(dashboard_path))
         if not args.quiet:
             print(f"Dashboard saved to: {dashboard_path}")
-    
+
     if args.individual_plots:
         if not args.quiet:
             print("\nGenerating individual plots...")
-        
-        # Knowledge comparison
-        plot_knowledge_comparison(
-            results, 
-            save_path=str(output_dir / "knowledge_comparison.png")
-        )
-        
-        # Category heatmaps
-        plot_category_heatmaps(
-            results,
-            save_path=str(output_dir / "category_heatmaps.png")
-        )
-        
-        # Exposure distribution
-        plot_exposure_distribution(
-            results,
-            save_path=str(output_dir / "exposure_distribution.png")
-        )
-        
-        # Weakest category
-        plot_weakest_category_improvement(
-            results,
-            save_path=str(output_dir / "weakest_category.png")
-        )
-        
-        # Knowledge variance
-        plot_knowledge_variance(
-            results,
-            save_path=str(output_dir / "knowledge_variance.png")
-        )
-        
-        # Final distribution
-        plot_final_knowledge_distribution(
-            results,
-            save_path=str(output_dir / "final_distribution.png")
-        )
-        
-        # Accuracy
-        plot_accuracy_over_time(
-            results,
-            save_path=str(output_dir / "accuracy.png")
-        )
-        
+
+        plot_knowledge_comparison(results, save_path=str(output_dir / "knowledge_comparison.png"))
+        plot_category_heatmaps(results, save_path=str(output_dir / "category_heatmaps.png"))
+        plot_exposure_distribution(results, save_path=str(output_dir / "exposure_distribution.png"))
+        plot_weakest_category_improvement(results, save_path=str(output_dir / "weakest_category.png"))
+        plot_knowledge_variance(results, save_path=str(output_dir / "knowledge_variance.png"))
+        plot_final_knowledge_distribution(results, save_path=str(output_dir / "final_distribution.png"))
+        plot_accuracy_over_time(results, save_path=str(output_dir / "accuracy.png"))
+
         if not args.quiet:
             print(f"Plots saved to: {output_dir}/")
-    
-    # Show plots if not suppressed
+
     if not args.no_show and (args.dashboard or args.individual_plots):
         plt.show()
-    
-    # Default behavior: show dashboard if no output options specified
+
     if not args.dashboard and not args.individual_plots and not args.csv:
         if not args.quiet:
             print("\nGenerating dashboard (use --dashboard to save)...")
         create_dashboard(results)
         if not args.no_show:
             plt.show()
-    
+
     return 0
 
 

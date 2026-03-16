@@ -8,7 +8,10 @@ from tqdm import tqdm
 
 from .config import ExperimentConfig
 from .student import Student
-from .selectors import RandomSelector, UCBSelectorAdapter
+from .selectors import (
+    BaseSelector, RandomSelector, UCBSelectorAdapter, OracleSelector,
+    create_selector, SELECTOR_REGISTRY,
+)
 
 
 @dataclass
@@ -359,24 +362,24 @@ def run_multiple_experiments(
 ) -> List[ExperimentResults]:
     """
     Run multiple experiments with different random seeds.
-    
+
     This is useful for computing confidence intervals and
     statistical significance.
-    
+
     Args:
         config: Base experiment configuration
         num_runs: Number of experiment runs
         show_progress: Whether to show progress
-        
+
     Returns:
         List of ExperimentResults from each run
     """
     results = []
-    
+
     runs = range(num_runs)
     if show_progress:
         runs = tqdm(runs, desc="Running experiments")
-    
+
     for run_idx in runs:
         # Create config with different seed
         run_config = ExperimentConfig(
@@ -394,9 +397,208 @@ def run_multiple_experiments(
             random_seed=(config.random_seed or 0) + run_idx * 10000,
             log_frequency=config.log_frequency,
         )
-        
+
         experiment = Experiment(run_config)
         result = experiment.run(show_progress=False)
         results.append(result)
-    
+
     return results
+
+
+@dataclass
+class MultiAlgorithmResults:
+    """Results from a multi-algorithm experiment run."""
+    config: ExperimentConfig
+    algorithms: List[str]
+    metrics: Dict[str, List[GroupMetrics]]  # algo_name -> list of GroupMetrics
+    final_students: Dict[str, List[Dict]]  # algo_name -> list of student stats
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Convert all results to a single DataFrame."""
+        frames = []
+        for algo_name, algo_metrics in self.metrics.items():
+            data = {
+                "timestep": [],
+                "group": [],
+                "average_knowledge": [],
+                "knowledge_std": [],
+                "weakest_category_avg": [],
+                "strongest_category_avg": [],
+                "knowledge_variance_avg": [],
+                "cumulative_correct": [],
+                "cumulative_incorrect": [],
+                "accuracy": [],
+            }
+            num_categories = len(algo_metrics[0].per_category_knowledge) if algo_metrics else 0
+            for i in range(num_categories):
+                data[f"category_{i}_knowledge"] = []
+                data[f"category_{i}_exposure"] = []
+
+            for m in algo_metrics:
+                data["timestep"].append(m.timestep)
+                data["group"].append(algo_name)
+                data["average_knowledge"].append(m.average_knowledge)
+                data["knowledge_std"].append(m.knowledge_std)
+                data["weakest_category_avg"].append(m.weakest_category_avg)
+                data["strongest_category_avg"].append(m.strongest_category_avg)
+                data["knowledge_variance_avg"].append(m.knowledge_variance_avg)
+                data["cumulative_correct"].append(m.cumulative_correct)
+                data["cumulative_incorrect"].append(m.cumulative_incorrect)
+                total = m.cumulative_correct + m.cumulative_incorrect
+                data["accuracy"].append(m.cumulative_correct / total if total > 0 else 0)
+                for i in range(num_categories):
+                    data[f"category_{i}_knowledge"].append(m.per_category_knowledge[i])
+                    data[f"category_{i}_exposure"].append(m.exposure_distribution[i])
+
+            frames.append(pd.DataFrame(data))
+        return pd.concat(frames, ignore_index=True)
+
+    def save_to_csv(self, filepath: str) -> None:
+        df = self.to_dataframe()
+        df.to_csv(filepath, index=False)
+
+
+class MultiAlgorithmExperiment:
+    """
+    Runs experiments comparing multiple algorithms simultaneously.
+
+    All algorithm groups start with identical initial student conditions
+    (same seeds) to ensure fair comparison.
+    """
+
+    def __init__(self, config: ExperimentConfig, algorithms: List[str]):
+        self.config = config
+        self.algorithms = algorithms
+        self.rng = np.random.default_rng(config.random_seed)
+
+        # Per-algorithm groups
+        self.groups: Dict[str, List[Student]] = {}
+        self.selectors: Dict[str, List[BaseSelector]] = {}
+        self.metrics: Dict[str, List[GroupMetrics]] = {a: [] for a in algorithms}
+
+        self._init_groups()
+
+    def _init_groups(self) -> None:
+        for algo in self.algorithms:
+            students = []
+            sels = []
+            for i in range(self.config.num_students_per_group):
+                student_seed = None
+                if self.config.random_seed is not None:
+                    student_seed = self.config.random_seed + i
+
+                student = Student(
+                    self.config,
+                    student_id=i,
+                    rng=np.random.default_rng(student_seed),
+                )
+                students.append(student)
+
+                # Selector RNG: different per algorithm to avoid correlation
+                sel_seed = (student_seed + hash(algo)) % (2**31) if student_seed else None
+                sel_rng = np.random.default_rng(sel_seed)
+                sel = create_selector(algo, self.config, rng=sel_rng)
+
+                # Oracle needs knowledge reference
+                if isinstance(sel, OracleSelector):
+                    sel.set_knowledge_ref(student.knowledge)
+
+                sels.append(sel)
+
+            self.groups[algo] = students
+            self.selectors[algo] = sels
+
+    def run(self, show_progress: bool = True) -> MultiAlgorithmResults:
+        # Log initial state
+        self._log_metrics(timestep=0)
+
+        timesteps = range(1, self.config.questions_per_session + 1)
+        if show_progress:
+            timesteps = tqdm(timesteps, desc="Running experiment")
+
+        for timestep in timesteps:
+            for algo in self.algorithms:
+                self._process_group_step(
+                    students=self.groups[algo],
+                    selectors=self.selectors[algo],
+                    timestep=timestep,
+                )
+
+            if timestep % self.config.log_frequency == 0:
+                self._log_metrics(timestep)
+
+        final_students = {
+            algo: [s.get_statistics() for s in self.groups[algo]]
+            for algo in self.algorithms
+        }
+
+        return MultiAlgorithmResults(
+            config=self.config,
+            algorithms=self.algorithms,
+            metrics=self.metrics,
+            final_students=final_students,
+        )
+
+    def _process_group_step(
+        self,
+        students: List[Student],
+        selectors: List[BaseSelector],
+        timestep: int,
+    ) -> None:
+        for student, selector in zip(students, selectors):
+            category = selector.select_category()
+            correct = student.answer(category)
+            student.update_knowledge(category, correct, timestep)
+            selector.update(category, correct)
+            student.apply_forgetting()
+
+    def _log_metrics(self, timestep: int) -> None:
+        for algo in self.algorithms:
+            m = self._compute_group_metrics(
+                self.groups[algo],
+                self.selectors[algo],
+                timestep,
+            )
+            self.metrics[algo].append(m)
+
+    def _compute_group_metrics(
+        self,
+        students: List[Student],
+        selectors: List[BaseSelector],
+        timestep: int,
+    ) -> GroupMetrics:
+        knowledge_matrix = np.array([s.knowledge for s in students])
+        avg_knowledge = float(np.mean(knowledge_matrix))
+        std_knowledge = float(np.std(knowledge_matrix))
+        per_category_avg = np.mean(knowledge_matrix, axis=0).tolist()
+        per_category_std = np.std(knowledge_matrix, axis=0).tolist()
+
+        weakest_indices = [s.get_weakest_category() for s in students]
+        strongest_indices = [s.get_strongest_category() for s in students]
+        weakest_knowledge = [
+            students[i].knowledge[weakest_indices[i]] for i in range(len(students))
+        ]
+        strongest_knowledge = [
+            students[i].knowledge[strongest_indices[i]] for i in range(len(students))
+        ]
+        variances = [s.get_knowledge_variance() for s in students]
+        total_correct = sum(int(np.sum(s.correct_counts)) for s in students)
+        total_incorrect = sum(int(np.sum(s.incorrect_counts)) for s in students)
+
+        exposure_dist = np.zeros(self.config.num_categories, dtype=np.int32)
+        for selector in selectors:
+            exposure_dist += selector.get_exposure_distribution()
+
+        return GroupMetrics(
+            timestep=timestep,
+            average_knowledge=avg_knowledge,
+            knowledge_std=std_knowledge,
+            per_category_knowledge=per_category_avg,
+            per_category_knowledge_std=per_category_std,
+            weakest_category_avg=float(np.mean(weakest_knowledge)),
+            strongest_category_avg=float(np.mean(strongest_knowledge)),
+            knowledge_variance_avg=float(np.mean(variances)),
+            cumulative_correct=total_correct,
+            cumulative_incorrect=total_incorrect,
+            exposure_distribution=exposure_dist.tolist(),
+        )
