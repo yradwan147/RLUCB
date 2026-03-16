@@ -9,5 +9,6 @@ dependencies:
   - pandas
   - matplotlib
   - scikit-learn
+  - tqdm
   - pip:
     - gymnasium

@@ -42,15 +42,37 @@
 - Added `--num-students` and `--output-dir` aliases for CLI compatibility
 - Backward compatible: no --algorithm falls back to legacy UCB vs Random
 
+**Phase E — Real data pipeline (COMPLETE)**
+- Created `experiment/real_data.py` (~500 lines):
+  - `load_duolingo()` — loads Duolingo Spaced Repetition 2016 (13M traces)
+  - `load_assistments()` — loads ASSISTments 2012-2013 (2.5M interactions)
+  - `fit_student_model()` — MLE fitting of α, β, λ, base, k0 from real data
+  - `replay_evaluate()` — model-based replay evaluation under different bandit policies
+  - `run_fitted_simulation()` — synthetic simulation with fitted parameters
+  - `run_real_data_experiment()` — full pipeline: load → fit → replay → simulate
+  - `FittedParams` dataclass with save/load (JSON)
+  - `ReplayResult` with trajectory data for plotting
+- Created `run_real_data.py` — CLI entry point with full argument parsing
+- Created `scripts/download_data.sh` — automated data download from Harvard Dataverse
+- Created SLURM scripts:
+  - `slurm/run_real_data.sh` — SLURM runner (64G RAM, 24h wall time)
+  - `slurm/submit_real_data.sh` — submits 10 jobs (2 datasets × 5 seeds)
+  - `slurm/submit_everything.sh` — submits ALL experiments (1010 jobs total)
+
 ### Tests run
 - Smoke test: all 10 selectors produce valid outputs (20 steps)
 - MultiAlgorithmExperiment: 10 algorithms × 10 students × 100 questions — passes
 - CLI test: `--algorithm random ucb1 fucb bkt_bandit oracle` — 200 questions — passes
 - Scale test: 50 categories × 1000 questions — passes
 - CSV export: correct shape (5006 rows for 5 algos × 1001 timesteps)
+- Real data pipeline end-to-end test with synthetic traces:
+  - MLE fitting: recovered α=0.135 (true 0.1), β=0.037 (true 0.02) — reasonable
+  - Replay evaluation: 5 algorithms on 10 students × 80 interactions — passes
+  - UCB1 weakest=0.270 > random weakest=0.166 — expected pattern holds
+  - Params save/load round-trip: OK
 
 ### What's next
-- Push to GitHub for IBEX access
-- Phase D: Submit experiments on cluster
-- Phase E: Real data pipeline (Duolingo SLAM, ASSISTments)
-- Phase G: Theoretical analysis (regret bounds for F-UCB)
+- Push to GitHub, pull on IBEX
+- Download real data on IBEX: `bash scripts/download_data.sh all`
+- Submit everything: `bash slurm/submit_everything.sh` (1010 jobs)
+- Phase G: Theoretical analysis (regret bounds for F-UCB, BKT-Bandit convergence)
