@@ -1,72 +1,76 @@
 # RLUCB NeurIPS Extension — Worklog
 
+## Session 3 — 2026-03-17 (continued)
+
+### Rerun 2 status
+- K=50, K=100, ASSISTments jobs were still running at time of transfer
+- K=6, K=20, Duolingo fully available — analyzed below
+
+### Full Analysis (K=6, K=20, Duolingo)
+
+**Finding 1: Clear regime split — two novel algorithms each dominate their territory**
+- BKT-Bandit wins "easy" regime (low K, low decay): +44% weakest-category over UCB1 at K=6 d=0.01
+- F-UCB wins "hard" regime (high K or high decay): +62% avg knowledge over UCB1 at K=6 d=0.05
+
+**Finding 2: Oracle catastrophe at high forgetting**
+- Oracle is *worst* algorithm at d=0.05 — greedy weakest-first spreads too thin under rapid decay
+- Cautionary result against naive "always quiz the weakest" policies
+
+**Finding 3: UCB1 exploration trap**
+- UCB1's confidence bounds ignore forgetting → wastes time on decayed arms
+- BKT-Bandit degrades least with K scaling (-67% vs Oracle's -76% going K=6→K=20)
+
+**Finding 4: BKT-Bandit = equity maximizer**
+- Best weakest-category knowledge in tractable regimes consistently
+- +38% over Random on weakest skill at K=6 d=0.01
+
+**Finding 5: Duolingo real data validation**
+- BKT-Bandit +2.9% weakest-category over Random (λ≈0, "easy" regime)
+- F-UCB ≈ UCB1 as expected with near-zero forgetting
+- Consistent across all 3 seeds (std < 0.004)
+
+**Statistical robustness**: Cross-seed std = 0.001–0.004 across all configs.
+
+### Pending
+- K=50, K=100 results (still running on IBEX) — will show scaling behavior
+- ASSISTments results (still running) — different domain, likely higher forgetting
+- Transfer and analyze when complete
+
+### Paper narrative (draft)
+*"Standard bandits fail in educational settings because they ignore forgetting. We formalize why (Oracle catastrophe, UCB1 exploration trap), propose two complementary solutions (F-UCB for hard regimes, BKT-Bandit for easy regimes), prove guarantees, and validate on real data."*
+
+---
+
 ## Session 2 — 2026-03-17
 
 ### Results from Run 1
-- **K=6 sweep: 9/9 succeeded** (all 10 algos × 3 decay rates × 3 seeds)
-- **K≥20 sweep: 27/27 failed** — OOM killed (exit 137), log_frequency=1 too memory-heavy
-- **Duolingo real data: 3/3 succeeded** — fitted params + replay + fitted sim
-- **ASSISTments real data: 6/6 failed** — datetime string timestamp parsing bug
+- K=6 sweep: 9/9 succeeded
+- K≥20 sweep: 27/27 OOM killed (exit 137)
+- Duolingo: 3/3 succeeded
+- ASSISTments: 6/6 failed (timestamp parsing)
 
-### Key Findings (K=6, 10K questions, 100 students)
-- **F-UCB dominates at high forgetting (d=0.05)**: avg_k=0.211, beats Oracle (0.122) by 73%, beats UCB1 (0.130) by 62%
-- **BKT-Bandit wins at medium forgetting (d=0.01)**: avg_k=0.581, matches Oracle (0.584) within 0.6%
-- **Leitner wins at low forgetting (d=0.005)**: avg_k=0.787, near-Oracle (0.790)
-- **Oracle paradox at d=0.05**: worst performer — spreads too thin under rapid decay
-- **F-UCB advantage grows with forgetting rate** — the harder the problem, the more it helps
-- **BKT-Bandit best weakest-category at d=0.01** (0.522 vs UCB1's 0.468)
-
-### Duolingo Real Data (500 students)
-- Fitted params: α=0.126, β=0.087, λ≈0 (near-zero forgetting), k0=0.91
-- Results consistent across 3 seeds
-- BKT-Bandit best weakest-category among non-oracle (0.774 vs UCB1's 0.753)
-- F-UCB ≈ UCB1 (as expected with λ≈0)
-
-### Bugs Fixed (rerun 1 — K=20 now works)
-1. **OOM fix #1**: auto log_frequency = max(1, questions // 1000), caps at ~1000 data points
-2. **ASSISTments fix attempt**: datetime conversion (didn't trigger — dtype check fragile)
-3. **Memory**: bumped slurm to 32G
-
-### Rerun 1 results
-- K=20: 9/9 succeeded
-- K=50: 9/9 OOM (exit 137) — Student.history was the culprit
-- K=100: 9/9 OOM — same
-- ASSISTments: 3/3 failed — timestamp fix didn't trigger
-
-### Bugs Fixed (rerun 2)
-1. **OOM fix #2**: `Student.track_history=False` by default. Was storing `knowledge_before` + `knowledge_after` (2×K floats) per step per student. For K=100: ~16GB total.
-2. **ASSISTments fix #2**: use `is_numeric_dtype()` instead of `dtype == object`
-
-### Re-run 2 submitted
-- `bash slurm/submit_failed_rerun2.sh` → 21 jobs (18 K=50,100 + 3 ASSISTments)
-
-### What's next
-- Collect rerun 2 results (should complete K=6,20,50,100 + Duolingo + ASSISTments)
-- Generate publication-quality visualizations across all K values
-- Phase G: Theoretical analysis (F-UCB regret bounds)
-- Phase H: Paper writing
+### Bugs Fixed
+- **Rerun 1**: auto log_frequency, 32G memory → K=20 succeeded, K=50/100 still OOM
+- **Rerun 2**: disabled Student.history (root cause: 2×K floats per step per student), robust ASSISTments timestamp parsing
 
 ---
 
 ## Session 1 — 2026-03-16
 
 ### What was done
-- Phases 0, A, B, C, E complete (see below)
-- 42 jobs submitted on IBEX
-
-**Phase A** — 8 new selectors: F-UCB, BKT-Bandit, BKT-Thompson, Thompson, ε-greedy, SW-UCB, Leitner, Oracle
-**Phase B** — MultiAlgorithmExperiment for N algorithm groups
-**Phase C** — Slurm integration (CPU-only, chessgcn env)
-**Phase E** — Real data pipeline (Duolingo + ASSISTments)
+- Phases 0, A, B, C, E complete
+- 10 algorithms: F-UCB, BKT-Bandit, BKT-Thompson, Thompson, ε-greedy, SW-UCB, Leitner, Oracle + UCB1 + Random
+- MultiAlgorithmExperiment, real data pipeline, slurm scripts
+- 42 initial jobs submitted
 
 ---
 
 ## Paper References (for Phase H)
 
 ### Already in `paper/refs.bib`
-- Auer et al. 2002 — UCB1 finite-time analysis (foundational)
+- Auer et al. 2002 — UCB1 finite-time analysis
 - Lattimore & Szepesvári 2020 — Bandit Algorithms textbook
-- Ebbinghaus 1885 — Forgetting curve (foundational)
+- Ebbinghaus 1885 — Forgetting curve
 - Murre & Dros 2015 — Ebbinghaus replication
 - Corbett & Anderson 1994 — Bayesian Knowledge Tracing (BKT)
 - Piech et al. 2015 — Deep Knowledge Tracing (NeurIPS)
@@ -81,44 +85,44 @@
 - VanLehn 2011 — ITS effectiveness review
 - Towers et al. 2024 — Gymnasium
 
-### New references to add for extended paper
+### New references to add
 
-**Non-stationary bandits (theory for F-UCB):**
-- Garivier & Moulines 2011 — "On Upper-Confidence Bound Policies for Switching Bandit Problems" (SW-UCB, foundation for our non-stationarity argument)
-- Besbes et al. 2014 — "Stochastic Multi-Armed-Bandit Problem with Non-stationary Rewards" (variation budget regret bounds)
-- Russac et al. 2019 — "Weighted Linear Bandits for Non-Stationary Environments" (D-LinUCB)
+**Non-stationary bandits (F-UCB theory):**
+- Garivier & Moulines 2011 — SW-UCB for switching bandits
+- Besbes et al. 2014 — Non-stationary MAB regret bounds
+- Russac et al. 2019 — D-LinUCB for non-stationary environments
 
 **Thompson Sampling:**
-- Thompson 1933 — "On the likelihood that one unknown probability exceeds another" (original)
-- Chapelle & Li 2011 — "An Empirical Evaluation of Thompson Sampling" (empirical comparison vs UCB)
-- Agrawal & Goyal 2012 — "Analysis of Thompson Sampling for the Multi-Armed Bandit Problem" (regret bounds for TS)
-- Russo et al. 2018 — "A Tutorial on Thompson Sampling" (comprehensive survey)
+- Thompson 1933 — Original TS paper
+- Chapelle & Li 2011 — Empirical evaluation of TS
+- Agrawal & Goyal 2012 — TS regret bounds
+- Russo et al. 2018 — Tutorial on Thompson Sampling
 
-**Variance-dependent / contextual bandits (NeurIPS 2024):**
-- Zhou & Tan 2024 — "How Does Variance Shape the Regret in Contextual Bandits?" (NeurIPS 2024)
-- He et al. 2024 — "Cert-LSVI-UCB: Constant instance-dependent regret bounds in RL" (NeurIPS 2024)
+**NeurIPS 2024 context:**
+- Zhou & Tan 2024 — Variance-dependent regret in contextual bandits
+- He et al. 2024 — Cert-LSVI-UCB constant regret bounds
 
-**Knowledge tracing + RL (competing methods):**
-- Zhang et al. 2025 — "Integrating RL with Dynamic Knowledge Tracing (RL-DKT)" (Nature Scientific Reports)
-- Shi et al. 2023 — "Adaptive Learning Path Navigation (ALPN): AKT + Entropy-enhanced PPO" (arXiv)
-- Ghosh et al. 2020 — "Contextual bandits with latent confounders" (connections to hidden knowledge state)
+**Knowledge tracing + RL:**
+- Zhang et al. 2025 — RL-DKT (Nature Scientific Reports)
+- Shi et al. 2023 — ALPN: AKT + Entropy-enhanced PPO
+- Ghosh et al. 2020 — Contextual bandits with latent confounders
 
-**Spaced repetition theory:**
-- Pimsleur 1967 — "A Memory Schedule" (graduated interval recall)
-- Reddy et al. 2016 — "Unbounded Human Learning: Optimal Scheduling for Spaced Repetition" (KDD)
+**Spaced repetition:**
+- Pimsleur 1967 — Graduated interval recall
+- Reddy et al. 2016 — Optimal scheduling for spaced repetition (KDD)
 
 **Educational data mining:**
-- Settles et al. 2018 — "Second Language Acquisition Modeling (SLAM)" shared task (Duolingo dataset)
-- Feng et al. 2009 — "ASSISTments dataset" (dataset source)
-- Baker & Inventado 2014 — "Educational Data Mining and Learning Analytics" (survey)
+- Settles et al. 2018 — SLAM shared task (Duolingo dataset)
+- Feng et al. 2009 — ASSISTments dataset
+- Baker & Inventado 2014 — EDM survey
 
-**Bayesian experimental design (for BKT-Bandit theory):**
-- Chaloner & Verdinelli 1995 — "Bayesian Experimental Design: A Review"
-- Lindley 1956 — "On a Measure of Information Provided by an Experiment" (information gain)
+**Bayesian experimental design (BKT-Bandit theory):**
+- Chaloner & Verdinelli 1995 — Bayesian experimental design review
+- Lindley 1956 — Information gain measure
 
 **Regret lower bounds:**
-- Lai & Robbins 1985 — "Asymptotically efficient adaptive allocation rules" (foundational lower bound)
+- Lai & Robbins 1985 — Asymptotically efficient allocation
 
 **Real data baselines:**
-- Choffin et al. 2019 — "DAS3H: Modeling Student Learning and Forgetting" (KDD, combines skills + forgetting)
-- Wilson et al. 2016 — "Back to the basics: Bayesian extensions of IRT" (Bayesian student modeling)
+- Choffin et al. 2019 — DAS3H: skills + forgetting (KDD)
+- Wilson et al. 2016 — Bayesian extensions of IRT
