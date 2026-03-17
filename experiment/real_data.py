@@ -274,6 +274,12 @@ def _build_dataset_from_df(
 
     df = df[df[student_col].isin(valid_students)]
 
+    # Convert timestamps to numeric (handles datetime strings)
+    if df[timestamp_col].dtype == object:
+        df[timestamp_col] = pd.to_datetime(df[timestamp_col], errors="coerce")
+    if pd.api.types.is_datetime64_any_dtype(df[timestamp_col]):
+        df[timestamp_col] = df[timestamp_col].astype(np.int64) // 10**9  # to unix seconds
+
     # Sort by student and timestamp
     df = df.sort_values([student_col, timestamp_col])
 

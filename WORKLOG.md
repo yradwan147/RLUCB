@@ -1,72 +1,53 @@
 # RLUCB NeurIPS Extension — Worklog
 
+## Session 2 — 2026-03-17
+
+### Results from Run 1
+- **K=6 sweep: 9/9 succeeded** (all 10 algos × 3 decay rates × 3 seeds)
+- **K≥20 sweep: 27/27 failed** — OOM killed (exit 137), log_frequency=1 too memory-heavy
+- **Duolingo real data: 3/3 succeeded** — fitted params + replay + fitted sim
+- **ASSISTments real data: 6/6 failed** — datetime string timestamp parsing bug
+
+### Key Findings (K=6, 10K questions, 100 students)
+- **F-UCB dominates at high forgetting (d=0.05)**: avg_k=0.211, beats Oracle (0.122) by 73%, beats UCB1 (0.130) by 62%
+- **BKT-Bandit wins at medium forgetting (d=0.01)**: avg_k=0.581, matches Oracle (0.584) within 0.6%
+- **Leitner wins at low forgetting (d=0.005)**: avg_k=0.787, near-Oracle (0.790)
+- **Oracle paradox at d=0.05**: worst performer — spreads too thin under rapid decay
+- **F-UCB advantage grows with forgetting rate** — the harder the problem, the more it helps
+- **BKT-Bandit best weakest-category at d=0.01** (0.522 vs UCB1's 0.468)
+
+### Duolingo Real Data (500 students)
+- Fitted params: α=0.126, β=0.087, λ≈0 (near-zero forgetting), k0=0.91
+- Results consistent across 3 seeds
+- BKT-Bandit best weakest-category among non-oracle (0.774 vs UCB1's 0.753)
+- F-UCB ≈ UCB1 (as expected with λ≈0)
+
+### Bugs Fixed
+1. **OOM fix**: auto log_frequency = max(1, questions // 1000), caps at ~1000 data points
+2. **ASSISTments fix**: convert datetime strings to unix timestamps before float()
+3. **Memory**: bumped slurm to 32G
+
+### Re-run submitted
+- `bash slurm/submit_failed_rerun.sh` → 30 jobs (27 synthetic K≥20 + 3 ASSISTments)
+
+### What's next
+- Collect re-run results
+- Generate publication-quality visualizations across all K values
+- Phase G: Theoretical analysis (F-UCB regret bounds)
+- Phase H: Paper writing
+
+---
+
 ## Session 1 — 2026-03-16
 
 ### What was done
+- Phases 0, A, B, C, E complete (see below)
+- 42 jobs submitted on IBEX
 
-**Phase 0 — Project setup (COMPLETE)**
-- GitHub remote verified (yradwan147/RLUCB)
-- Updated `.gitignore` for results/, data/, slurm_logs/, *.pdf
-- Created plans/, slurm/, results/, scripts/ directories
-
-**Phase A — New selectors (COMPLETE)**
-- Implemented 8 new selectors in `experiment/selectors.py`:
-  - `FUCBSelector` — Forgetting-aware UCB with time-decay + urgency
-  - `BKTBanditSelector` — Bayesian knowledge-state bandit with Beta posteriors
-  - `BKTThompsonSelector` — Thompson Sampling with forgetting-aware posteriors
-  - `ThompsonSelector` — Standard Thompson Sampling (no forgetting)
-  - `EpsilonGreedySelector` — ε-greedy with ε=0.1
-  - `SlidingWindowUCBSelector` — SW-UCB with configurable window
-  - `LeitnerSelector` — Spaced repetition (Leitner box system)
-  - `OracleSelector` — Cheats with true knowledge (upper bound)
-- Added `SELECTOR_REGISTRY` and `create_selector()` factory function
-
-**Phase B — Simulation generalization (COMPLETE)**
-- Added `MultiAlgorithmExperiment` class to `experiment/simulation.py`
-- Added `MultiAlgorithmResults` with DataFrame export and CSV saving
-- Supports N algorithm groups with identical initial conditions
-
-**Phase C — Slurm integration (COMPLETE)**
-- All jobs are CPU-only (no GPU needed)
-- `slurm/run_experiment.sh` — runs all 10 algorithms per (K, λ, seed) combo
-- `slurm/run_real_data.sh` — real data pipeline per (dataset, seed)
-- `slurm/submit_all.sh` — 36 synthetic sweep jobs
-- `slurm/submit_real_data.sh` — 6 real data jobs
-- `slurm/submit_everything.sh` — 42 total jobs, installs deps first
-- Uses shared `chessgcn` conda env + `pip install -r requirements.txt`
-
-**Phase E — Real data pipeline (COMPLETE)**
-- `experiment/real_data.py`: load Duolingo + ASSISTments, MLE fitting, replay eval
-- `run_real_data.py`: CLI entry point
-- `scripts/download_data.sh`: automated download (Harvard Dataverse + gdown)
-- Duolingo file ID: 3091087, ASSISTments via gdown
-
-**run_experiment.py updated**
-- `--algorithm` flag for selecting specific algorithms
-- `--all-algorithms` runs all 10 in one job
-- `--csv` auto-exports results
-- Backward compatible with legacy UCB vs Random mode
-
-### Tests run locally
-- All 10 selectors: smoke test (20 steps) ✓
-- MultiAlgorithmExperiment: 10 algos × 10 students × 100 questions ✓
-- CLI `--all-algorithms --csv`: 10 algos × 5 students × 50 questions ✓
-- Scale test: 50 categories × 1000 questions ✓
-- Real data pipeline end-to-end (synthetic traces): MLE fitting + replay ✓
-- Params save/load round-trip ✓
-
-### Jobs submitted on IBEX
-- 42 jobs total (36 synthetic sweep + 6 real data)
-- Synthetic grid: K ∈ {6, 20, 50, 100}, λ ∈ {0.005, 0.01, 0.05}, seeds ∈ {42, 123, 456}
-- Real data: Duolingo + ASSISTments × 3 seeds
-- Cancel command: `squeue -u $USER -o "%i %j" | grep -E "sweep_|rd_" | awk '{print $1}' | xargs -r scancel`
-
-### What's next (after jobs finish)
-- Collect and analyze results from IBEX
-- Generate publication-quality visualizations
-- Phase G: Theoretical analysis (F-UCB regret bounds, BKT-Bandit convergence)
-- Phase H: Paper writing (last)
-- May need additional ablation runs depending on results
+**Phase A** — 8 new selectors: F-UCB, BKT-Bandit, BKT-Thompson, Thompson, ε-greedy, SW-UCB, Leitner, Oracle
+**Phase B** — MultiAlgorithmExperiment for N algorithm groups
+**Phase C** — Slurm integration (CPU-only, chessgcn env)
+**Phase E** — Real data pipeline (Duolingo + ASSISTments)
 
 ---
 
@@ -114,7 +95,6 @@
 
 **Spaced repetition theory:**
 - Pimsleur 1967 — "A Memory Schedule" (graduated interval recall)
-- Wozniak & Gorzelanczyk 1995 — "Two components of long-term memory" (already in bib)
 - Reddy et al. 2016 — "Unbounded Human Learning: Optimal Scheduling for Spaced Repetition" (KDD)
 
 **Educational data mining:**

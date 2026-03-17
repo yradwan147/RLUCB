@@ -177,6 +177,12 @@ def parse_args():
         default=None,
         help="Alias for --output (for CLI compatibility)",
     )
+    parser.add_argument(
+        "--log-frequency",
+        type=int,
+        default=None,
+        help="Log metrics every N timesteps (default: auto-set based on questions)",
+    )
 
     return parser.parse_args()
 
@@ -193,6 +199,12 @@ def main():
     output_dir = Path(output_path)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Auto-set log frequency to keep output manageable (~1000 data points max)
+    if args.log_frequency is not None:
+        log_freq = args.log_frequency
+    else:
+        log_freq = max(1, args.questions // 1000)
+
     # Create configuration
     config = ExperimentConfig(
         num_students_per_group=num_students,
@@ -206,6 +218,7 @@ def main():
         questions_per_session=args.questions,
         exploration_param=args.exploration,
         random_seed=args.seed,
+        log_frequency=log_freq,
     )
 
     # Determine algorithms to run
