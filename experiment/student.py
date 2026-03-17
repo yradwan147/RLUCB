@@ -31,31 +31,34 @@ class Student:
         config: ExperimentConfig,
         student_id: int = 0,
         rng: Optional[np.random.Generator] = None,
+        track_history: bool = False,
     ):
         """
         Initialize a student with knowledge based on config.
-        
+
         Args:
             config: Experiment configuration
             student_id: Unique identifier for this student
             rng: Random number generator (for reproducibility)
+            track_history: Whether to store per-step history (memory-heavy)
         """
         self.config = config
         self.student_id = student_id
         self.rng = rng if rng is not None else np.random.default_rng()
-        
+        self.track_history = track_history
+
         # Initialize knowledge vector
         self.knowledge = self._init_knowledge()
-        
+
         # Track time since each category was last exposed
         self.time_since_exposure = np.zeros(config.num_categories, dtype=np.int32)
-        
-        # Track history of interactions
+
+        # Track history of interactions (only if enabled)
         self.history: List[StudentHistory] = []
-        
+
         # Track exposure counts per category
         self.exposure_counts = np.zeros(config.num_categories, dtype=np.int32)
-        
+
         # Track correct/incorrect per category
         self.correct_counts = np.zeros(config.num_categories, dtype=np.int32)
         self.incorrect_counts = np.zeros(config.num_categories, dtype=np.int32)
@@ -114,8 +117,8 @@ class Student:
             correct: Whether the answer was correct
             timestep: Current timestep (for history tracking)
         """
-        knowledge_before = self.knowledge.copy()
-        
+        knowledge_before = self.knowledge.copy() if self.track_history else None
+
         if correct:
             # Asymptotic learning toward 1.0
             # k_new = k + alpha * (1 - k)
@@ -136,14 +139,15 @@ class Student:
         # Update exposure count
         self.exposure_counts[category] += 1
         
-        # Record history
-        self.history.append(StudentHistory(
-            timestep=timestep,
-            category=category,
-            correct=correct,
-            knowledge_before=knowledge_before.tolist(),
-            knowledge_after=self.knowledge.copy().tolist(),
-        ))
+        # Record history (disabled by default for memory efficiency)
+        if self.track_history:
+            self.history.append(StudentHistory(
+                timestep=timestep,
+                category=category,
+                correct=correct,
+                knowledge_before=knowledge_before.tolist(),
+                knowledge_after=self.knowledge.copy().tolist(),
+            ))
     
     def apply_forgetting(self) -> None:
         """

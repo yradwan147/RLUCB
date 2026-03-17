@@ -22,16 +22,26 @@
 - BKT-Bandit best weakest-category among non-oracle (0.774 vs UCB1's 0.753)
 - F-UCB ≈ UCB1 (as expected with λ≈0)
 
-### Bugs Fixed
-1. **OOM fix**: auto log_frequency = max(1, questions // 1000), caps at ~1000 data points
-2. **ASSISTments fix**: convert datetime strings to unix timestamps before float()
+### Bugs Fixed (rerun 1 — K=20 now works)
+1. **OOM fix #1**: auto log_frequency = max(1, questions // 1000), caps at ~1000 data points
+2. **ASSISTments fix attempt**: datetime conversion (didn't trigger — dtype check fragile)
 3. **Memory**: bumped slurm to 32G
 
-### Re-run submitted
-- `bash slurm/submit_failed_rerun.sh` → 30 jobs (27 synthetic K≥20 + 3 ASSISTments)
+### Rerun 1 results
+- K=20: 9/9 succeeded
+- K=50: 9/9 OOM (exit 137) — Student.history was the culprit
+- K=100: 9/9 OOM — same
+- ASSISTments: 3/3 failed — timestamp fix didn't trigger
+
+### Bugs Fixed (rerun 2)
+1. **OOM fix #2**: `Student.track_history=False` by default. Was storing `knowledge_before` + `knowledge_after` (2×K floats) per step per student. For K=100: ~16GB total.
+2. **ASSISTments fix #2**: use `is_numeric_dtype()` instead of `dtype == object`
+
+### Re-run 2 submitted
+- `bash slurm/submit_failed_rerun2.sh` → 21 jobs (18 K=50,100 + 3 ASSISTments)
 
 ### What's next
-- Collect re-run results
+- Collect rerun 2 results (should complete K=6,20,50,100 + Duolingo + ASSISTments)
 - Generate publication-quality visualizations across all K values
 - Phase G: Theoretical analysis (F-UCB regret bounds)
 - Phase H: Paper writing
