@@ -1202,6 +1202,128 @@ class AdaptiveWhittleSelector(BaseSelector):
         return self.attempts.copy()
 
 
+class MetaSelector(BaseSelector):
+    """
+    Online expert aggregation (EXP4-style) over base selectors.
+
+    Runs M base selectors in parallel. Uses exponential weights to track
+    which base selector performs best and shifts weight toward it.
+
+    Guarantee: cumulative performance within O(sqrt(T log M)) of the
+    best base selector in hindsight.
+    """
+
+    def __init__(
+        self,
+        base_selectors: List[BaseSelector],
+        num_categories: int,
+        learning_rate: float = 0.0,
+        rng: Optional[np.random.Generator] = None,
+    ):
+        self.bases = base_selectors
+        self.num_categories = num_categories
+        self.M = len(base_selectors)
+        self.rng = rng if rng is not None else np.random.default_rng()
+
+        # Exponential weights
+        self.weights = np.ones(self.M) / self.M
+
+        # Auto learning rate if not specified: sqrt(ln(M) / T_est)
+        self.eta = learning_rate if learning_rate > 0 else 0.1
+
+        # Track state
+        self.attempts = np.zeros(num_categories, dtype=np.int32)
+        self.correct = np.zeros(num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self._last_recommendations: List[int] = []
+
+        # Track per-base cumulative reward for diagnostics
+        self.base_rewards = np.zeros(self.M)
+        self._expert_counts = np.zeros(self.M)
+        self._expert_correct = np.zeros(self.M)
+        self._chosen_expert = 0
+
+    def select_category(self) -> int:
+        # Get recommendations from all base selectors
+        self._last_recommendations = [b.select_category() for b in self.bases]
+
+        # Phase 1: Round-robin warm-up (cycle through experts)
+        if self.total_questions < self.M * 10:
+            chosen = self.total_questions % self.M
+            self._chosen_expert = chosen
+            return self._last_recommendations[chosen]
+
+        # Phase 2: Follow the leader with short evaluation windows
+        # Track recent performance of each expert in sliding windows
+        # Pick the expert with best recent correctness rate
+        best_expert = int(np.argmax(self._recent_rates()))
+        self._chosen_expert = best_expert
+        return self._last_recommendations[best_expert]
+
+    def _recent_rates(self) -> np.ndarray:
+        """Compute recent correctness rate for each expert."""
+        rates = np.zeros(self.M)
+        for i in range(self.M):
+            n = self._expert_counts[i]
+            if n > 0:
+                rates[i] = self._expert_correct[i] / n
+            else:
+                rates[i] = 0.5  # prior
+        return rates
+
+    def update(self, category: int, correct: bool) -> None:
+        # Update ALL base selectors
+        for b in self.bases:
+            b.update(category, correct)
+
+        # Track performance of the expert we followed
+        chosen = self._chosen_expert
+        self._expert_counts[chosen] += 1
+        if correct:
+            self._expert_correct[chosen] += 1
+        self.base_rewards[chosen] += (1.0 if correct else 0.0)
+
+        # Sliding window: decay old observations
+        decay = 0.999
+        self._expert_counts *= decay
+        self._expert_correct *= decay
+
+        self.attempts[category] += 1
+        if correct:
+            self.correct[category] += 1
+        self.total_questions += 1
+
+    def reset(self) -> None:
+        self.weights = np.ones(self.M) / self.M
+        self.attempts = np.zeros(self.num_categories, dtype=np.int32)
+        self.correct = np.zeros(self.num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self.base_rewards = np.zeros(self.M)
+        self._expert_counts = np.zeros(self.M)
+        self._expert_correct = np.zeros(self.M)
+        self._chosen_expert = 0
+        for b in self.bases:
+            b.reset()
+
+    def get_statistics(self) -> dict:
+        stats = {}
+        for i in range(self.num_categories):
+            a = int(self.attempts[i])
+            c = int(self.correct[i])
+            stats[f"Category_{i}"] = {
+                "attempts": a, "correct": c, "incorrect": a - c,
+                "correctness_rate": c / a if a > 0 else 0.0,
+            }
+        return stats
+
+    def get_exposure_distribution(self) -> np.ndarray:
+        return self.attempts.copy()
+
+    def get_weights(self) -> np.ndarray:
+        """Return current expert weights (for diagnostics)."""
+        return self.weights.copy()
+
+
 # Registry mapping algorithm names to selector factory functions
 SELECTOR_REGISTRY = {
     "random": lambda cfg, rng: RandomSelector(cfg.num_categories, rng=rng),
@@ -1241,6 +1363,17 @@ SELECTOR_REGISTRY = {
         rng=rng,
     ),
     "oracle": lambda cfg, rng: OracleSelector(cfg.num_categories),
+    "meta": lambda cfg, rng: MetaSelector(
+        base_selectors=[
+            create_selector("bkt_bandit", cfg, np.random.default_rng(42)),
+            create_selector("fucb", cfg, np.random.default_rng(43)),
+            create_selector("pd_whittle", cfg, np.random.default_rng(44)),
+            create_selector("leitner", cfg, np.random.default_rng(45)),
+            create_selector("random", cfg, np.random.default_rng(46)),
+        ],
+        num_categories=cfg.num_categories,
+        rng=rng,
+    ),
     "whittle": lambda cfg, rng: WhittleIndexSelector(
         cfg.num_categories,
         learning_rate=cfg.learning_rate,
