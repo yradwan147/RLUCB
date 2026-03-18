@@ -806,6 +806,254 @@ class OracleSelector(BaseSelector):
         return self.attempts.copy()
 
 
+class WhittleIndexSelector(BaseSelector):
+    """
+    Whittle Index selector for the education-forgetting restless bandit.
+
+    Precomputes the Whittle index table from known model parameters,
+    then at each step selects the category with highest index based on
+    its estimated knowledge state.
+
+    Uses observed correctness rates as knowledge estimates (like UCB),
+    but selects via principled Whittle index instead of heuristic score.
+    """
+
+    def __init__(
+        self,
+        num_categories: int,
+        learning_rate: float = 0.12,
+        incorrect_penalty: float = 0.02,
+        decay_rate: float = 0.01,
+        base_knowledge: float = 0.10,
+    ):
+        from .whittle import approximate_whittle_index
+
+        self.num_categories = num_categories
+        self.learning_rate = learning_rate
+        self.incorrect_penalty = incorrect_penalty
+        self.decay_rate = decay_rate
+        self.base_knowledge = base_knowledge
+        self._approx_whittle = approximate_whittle_index
+
+        # Beta posterior per category for knowledge estimation
+        self.alpha = np.ones(num_categories)
+        self.beta_arr = np.ones(num_categories)
+
+        self.attempts = np.zeros(num_categories, dtype=np.int32)
+        self.correct = np.zeros(num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self.time_since_exposure = np.zeros(num_categories, dtype=np.int32)
+
+    def _apply_posterior_forgetting(self) -> None:
+        """Shrink posteriors toward prior for categories not recently quizzed."""
+        for i in range(self.num_categories):
+            if self.time_since_exposure[i] > 0:
+                t = self.time_since_exposure[i]
+                decay = math.exp(-self.decay_rate * t)
+                self.alpha[i] = 1.0 + (self.alpha[i] - 1.0) * decay
+                self.beta_arr[i] = 1.0 + (self.beta_arr[i] - 1.0) * decay
+
+    def select_category(self) -> int:
+        # Explore unvisited first
+        for i in range(self.num_categories):
+            if self.attempts[i] == 0:
+                return i
+
+        self._apply_posterior_forgetting()
+
+        best_score = -float('inf')
+        best_cat = 0
+
+        for i in range(self.num_categories):
+            a, b = self.alpha[i], self.beta_arr[i]
+            k_est = a / (a + b)
+            k_est = max(0.01, min(0.99, k_est))
+
+            # Whittle index = active gain + forgetting opportunity cost
+            W = self._approx_whittle(
+                k_est, self.learning_rate, self.incorrect_penalty,
+                self.decay_rate, self.base_knowledge,
+            )
+
+            # Add urgency for time since exposure
+            t = self.time_since_exposure[i]
+            urgency = (k_est - self.base_knowledge) * (1 - math.exp(-self.decay_rate * t))
+            W += urgency
+
+            if W > best_score:
+                best_score = W
+                best_cat = i
+
+        return best_cat
+
+    def update(self, category: int, correct: bool) -> None:
+        if correct:
+            self.alpha[category] += 1
+            self.correct[category] += 1
+        else:
+            self.beta_arr[category] += 1
+        self.attempts[category] += 1
+        self.total_questions += 1
+        self.time_since_exposure += 1
+        self.time_since_exposure[category] = 0
+
+    def reset(self) -> None:
+        self.alpha = np.ones(self.num_categories)
+        self.beta_arr = np.ones(self.num_categories)
+        self.attempts = np.zeros(self.num_categories, dtype=np.int32)
+        self.correct = np.zeros(self.num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self.time_since_exposure = np.zeros(self.num_categories, dtype=np.int32)
+
+    def get_statistics(self) -> dict:
+        stats = {}
+        for i in range(self.num_categories):
+            a = int(self.attempts[i])
+            c = int(self.correct[i])
+            stats[f"Category_{i}"] = {
+                "attempts": a, "correct": c, "incorrect": a - c,
+                "correctness_rate": c / a if a > 0 else 0.0,
+            }
+        return stats
+
+    def get_exposure_distribution(self) -> np.ndarray:
+        return self.attempts.copy()
+
+
+class PDWhittleSelector(BaseSelector):
+    """
+    Parametric-Decay Whittle (PD-Whittle) selector.
+
+    Online learning version that maintains Bayesian estimates of per-arm
+    decay parameters and recomputes Whittle indices as estimates improve.
+
+    Uses approximate Whittle index (closed-form) for efficiency, with
+    decay-aware exploration bonus.
+    """
+
+    def __init__(
+        self,
+        num_categories: int,
+        learning_rate: float = 0.12,
+        incorrect_penalty: float = 0.02,
+        decay_rate_prior: float = 0.01,
+        base_knowledge: float = 0.10,
+        exploration_param: float = 1.414,
+        rng: Optional[np.random.Generator] = None,
+    ):
+        from .whittle import approximate_whittle_index
+
+        self.num_categories = num_categories
+        self.learning_rate = learning_rate
+        self.incorrect_penalty = incorrect_penalty
+        self.base_knowledge = base_knowledge
+        self.exploration_param = exploration_param
+        self._approx_whittle = approximate_whittle_index
+        self.rng = rng if rng is not None else np.random.default_rng()
+
+        # Per-category Bayesian estimates
+        # Track running correctness as knowledge proxy
+        self.alpha = np.ones(num_categories)  # Beta posterior: correct + 1
+        self.beta_ = np.ones(num_categories)  # Beta posterior: incorrect + 1
+
+        self.attempts = np.zeros(num_categories, dtype=np.int32)
+        self.correct = np.zeros(num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self.time_since_exposure = np.zeros(num_categories, dtype=np.int32)
+
+        # Per-arm decay rate estimate (start with prior)
+        self.decay_estimates = np.full(num_categories, decay_rate_prior)
+        self.decay_observations = [[] for _ in range(num_categories)]
+
+    def select_category(self) -> int:
+        # Explore unvisited first
+        for i in range(self.num_categories):
+            if self.attempts[i] == 0:
+                return i
+
+        best_score = -float('inf')
+        best_cat = 0
+
+        for i in range(self.num_categories):
+            # Knowledge estimate from Beta posterior, adjusted for decay
+            a, b = self.alpha[i], self.beta_[i]
+            k_est = a / (a + b)
+            t = self.time_since_exposure[i]
+            decay = math.exp(-self.decay_estimates[i] * t)
+            k_est = k_est * decay + self.base_knowledge * (1 - decay)
+            k_est = max(0.01, min(0.99, k_est))
+
+            # Approximate Whittle index
+            W = self._approx_whittle(
+                k_est, self.learning_rate, self.incorrect_penalty,
+                self.decay_estimates[i], self.base_knowledge,
+            )
+
+            # Decay-aware exploration bonus
+            n_i = self.attempts[i]
+            posterior_std = math.sqrt(a * b / ((a + b) ** 2 * (a + b + 1)))
+            urgency = 1.0 + self.decay_estimates[i] * t
+            bonus = self.exploration_param * posterior_std * urgency * math.sqrt(
+                math.log(self.total_questions + 1) / n_i
+            )
+
+            score = W + bonus
+            if score > best_score:
+                best_score = score
+                best_cat = i
+
+        return best_cat
+
+    def update(self, category: int, correct: bool) -> None:
+        if correct:
+            self.alpha[category] += 1
+            self.correct[category] += 1
+        else:
+            self.beta_[category] += 1
+        self.attempts[category] += 1
+        self.total_questions += 1
+
+        # Update decay estimate: if we haven't seen this category in a while
+        # and the student gets it wrong more than expected, decay is higher
+        t = self.time_since_exposure[category]
+        if t > 0 and self.attempts[category] > 3:
+            expected_k = (self.alpha[category] - 1) / max(1, self.attempts[category] - 1)
+            actual = 1.0 if correct else 0.0
+            # Simple exponential smoothing of decay estimate
+            if not correct and expected_k > 0.5:
+                # Student was expected to know this but got it wrong → decay higher
+                self.decay_estimates[category] *= 1.05
+            elif correct and expected_k < 0.5:
+                # Student was expected to NOT know but got it right → decay lower
+                self.decay_estimates[category] *= 0.95
+            self.decay_estimates[category] = max(1e-4, min(0.5, self.decay_estimates[category]))
+
+        self.time_since_exposure += 1
+        self.time_since_exposure[category] = 0
+
+    def reset(self) -> None:
+        self.alpha = np.ones(self.num_categories)
+        self.beta_ = np.ones(self.num_categories)
+        self.attempts = np.zeros(self.num_categories, dtype=np.int32)
+        self.correct = np.zeros(self.num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self.time_since_exposure = np.zeros(self.num_categories, dtype=np.int32)
+
+    def get_statistics(self) -> dict:
+        stats = {}
+        for i in range(self.num_categories):
+            a = int(self.attempts[i])
+            c = int(self.correct[i])
+            stats[f"Category_{i}"] = {
+                "attempts": a, "correct": c, "incorrect": a - c,
+                "correctness_rate": c / a if a > 0 else 0.0,
+            }
+        return stats
+
+    def get_exposure_distribution(self) -> np.ndarray:
+        return self.attempts.copy()
+
+
 # Registry mapping algorithm names to selector factory functions
 SELECTOR_REGISTRY = {
     "random": lambda cfg, rng: RandomSelector(cfg.num_categories, rng=rng),
@@ -845,6 +1093,22 @@ SELECTOR_REGISTRY = {
         rng=rng,
     ),
     "oracle": lambda cfg, rng: OracleSelector(cfg.num_categories),
+    "whittle": lambda cfg, rng: WhittleIndexSelector(
+        cfg.num_categories,
+        learning_rate=cfg.learning_rate,
+        incorrect_penalty=cfg.incorrect_penalty,
+        decay_rate=cfg.decay_rate,
+        base_knowledge=cfg.base_knowledge,
+    ),
+    "pd_whittle": lambda cfg, rng: PDWhittleSelector(
+        cfg.num_categories,
+        learning_rate=cfg.learning_rate,
+        incorrect_penalty=cfg.incorrect_penalty,
+        decay_rate_prior=cfg.decay_rate,
+        base_knowledge=cfg.base_knowledge,
+        exploration_param=cfg.exploration_param,
+        rng=rng,
+    ),
 }
 
 
