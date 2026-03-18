@@ -42,8 +42,32 @@
 - At very low k, quizzing helps little (student mostly wrong, learning gain small)
 - The optimal policy quizzes the "zone of proximal development" (k≈0.3-0.5)
 
-### Testing (in progress)
-- Running comparison of all 9+2 algorithms on K=6 d=0.01
+### Algorithm Iteration Results
+
+**Iteration 1** — Raw Whittle index: terrible (worst at all decay rates)
+- Problem: one-step approximation peaks at k≈0.5, doesn't favor weak categories
+
+**Iteration 2** — Advantage-based index (V_active - V_passive):
+- Much better! Monotonically decreasing with k (correctly favors weak)
+- But exploration bonus negligible (W~40 vs bonus~0.1)
+
+**Iteration 3** — Normalized indices [0,1] + exploration:
+- WhittleIndex now 5th→5th→3rd across decay rates
+- PD-Whittle: 4th, 3rd, 3rd — competitive at low/medium decay
+
+**Iteration 4** — Budget-aware advantage (active_fraction = 1/K):
+- K=20 d=0.005: PD-Whittle **2nd** (ahead of BKT-Bandit!)
+- Still behind F-UCB at high decay
+
+**Current best results (30 students, 2000 questions):**
+| Config | #1 | PD-Whittle rank |
+|--------|----|----|
+| K=6 d=0.005 | Oracle | 4th (0.787, gap <1%) |
+| K=6 d=0.01 | Oracle | ~3rd |
+| K=6 d=0.05 | F-UCB | 5th |
+| K=20 d=0.005 | Random | **2nd** |
+| K=20 d=0.01 | BKT-Bandit | 4th |
+| K=20 d=0.05 | F-UCB | 5th |
 
 ### Plan saved to: `plans/pd_rmab_plan.md`
 
