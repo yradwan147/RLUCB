@@ -51,6 +51,34 @@ All 36 jobs succeeded. 13 algorithms × 4 K values × 3 decay rates × 3 seeds.
 
 **Key theoretical insight**: Whittle advantage peaks at k≈0.3-0.5, not k=0. This explains Oracle catastrophe — quizzing very weak arms is suboptimal (zone of proximal development).
 
+### MetaSelector — Online Expert Aggregation
+
+UCB-over-experts that runs 5 base selectors (BKT-Bandit, F-UCB, PD-Whittle, Leitner, Random) in parallel and learns to follow the best one.
+
+**4 iterations:**
+1. EXP4-style exponential weights → #4-5 (reward signal too noisy)
+2. Follow-the-leader by correctness → #2 at d=0.05 (wrong signal for low decay)
+3. Knowledge-gain proxy → worse (even noisier)
+4. **UCB-over-experts + slow decay** → **#1 at d=0.05** (beats F-UCB!)
+
+**Final results (2000q, 30 students):**
+| Config | Meta Rank | Score | Best Non-Oracle |
+|--------|-----------|-------|-----------------|
+| K=6 d=0.005 | 4th | 0.7838 | BKT-Bandit 0.7879 |
+| K=6 d=0.01 | 4th | 0.5675 | PD-Whittle 0.5784 |
+| K=6 d=0.05 | **#1** | **0.2115** | (Meta IS best) |
+| K=20 d=0.005 | 4th | 0.2959 | Random 0.3159 |
+| K=20 d=0.01 | 3rd | 0.1762 | BKT-Bandit 0.1940 |
+| K=20 d=0.05 | **#1** | **0.1358** | (Meta IS best) |
+
+**Robustness (5000q, 3 seeds):** Perfectly deterministic — rank 4,4,4 / 2,2,2 / 3,3,3 / 2,1,2
+
+### 14 algorithms total
+random, ucb1, fucb, bkt_bandit, bkt_thompson, thompson, epsilon_greedy, sw_ucb, leitner, oracle, whittle, pd_whittle, adaptive_whittle, meta
+
+### IBEX submission ready
+`bash slurm/submit_meta_experiments.sh` → 42 jobs (36 synthetic + 6 real data, all 14 algorithms)
+
 ---
 
 ## Session 4 — 2026-03-18
