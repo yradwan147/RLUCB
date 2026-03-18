@@ -825,15 +825,31 @@ class WhittleIndexSelector(BaseSelector):
         incorrect_penalty: float = 0.02,
         decay_rate: float = 0.01,
         base_knowledge: float = 0.10,
+        exploration_param: float = 1.414,
     ):
-        from .whittle import approximate_whittle_index
+        from .whittle import compute_whittle_index_table, lookup_whittle_index
 
         self.num_categories = num_categories
-        self.learning_rate = learning_rate
-        self.incorrect_penalty = incorrect_penalty
         self.decay_rate = decay_rate
         self.base_knowledge = base_knowledge
-        self._approx_whittle = approximate_whittle_index
+        self.exploration_param = exploration_param
+        self._lookup = lookup_whittle_index
+
+        # Precompute advantage-based index table
+        self._states, self._raw_indices = compute_whittle_index_table(
+            learning_rate=learning_rate,
+            incorrect_penalty=incorrect_penalty,
+            decay_rate=decay_rate,
+            base_knowledge=base_knowledge,
+            num_states=50,
+        )
+        # Normalize indices to [0, 1] for proper combination with exploration
+        idx_min = self._raw_indices.min()
+        idx_range = self._raw_indices.max() - idx_min
+        if idx_range > 0:
+            self._indices = (self._raw_indices - idx_min) / idx_range
+        else:
+            self._indices = np.ones_like(self._raw_indices) * 0.5
 
         # Beta posterior per category for knowledge estimation
         self.alpha = np.ones(num_categories)
@@ -869,19 +885,20 @@ class WhittleIndexSelector(BaseSelector):
             k_est = a / (a + b)
             k_est = max(0.01, min(0.99, k_est))
 
-            # Whittle index = active gain + forgetting opportunity cost
-            W = self._approx_whittle(
-                k_est, self.learning_rate, self.incorrect_penalty,
-                self.decay_rate, self.base_knowledge,
-            )
+            # Whittle advantage: lookup from precomputed table
+            W = self._lookup(k_est, self._states, self._indices)
 
-            # Add urgency for time since exposure
+            # Posterior uncertainty as exploration bonus
+            std = math.sqrt(a * b / ((a + b) ** 2 * (a + b + 1)))
+
+            # Decay-aware exploration: more urgent for categories not seen recently
             t = self.time_since_exposure[i]
-            urgency = (k_est - self.base_knowledge) * (1 - math.exp(-self.decay_rate * t))
-            W += urgency
+            urgency = 1.0 + self.decay_rate * t
 
-            if W > best_score:
-                best_score = W
+            score = W + self.exploration_param * std * urgency
+
+            if score > best_score:
+                best_score = score
                 best_cat = i
 
         return best_cat
@@ -936,68 +953,77 @@ class PDWhittleSelector(BaseSelector):
         num_categories: int,
         learning_rate: float = 0.12,
         incorrect_penalty: float = 0.02,
-        decay_rate_prior: float = 0.01,
+        decay_rate: float = 0.01,
         base_knowledge: float = 0.10,
         exploration_param: float = 1.414,
         rng: Optional[np.random.Generator] = None,
     ):
-        from .whittle import approximate_whittle_index
+        from .whittle import compute_whittle_index_table, lookup_whittle_index
 
         self.num_categories = num_categories
-        self.learning_rate = learning_rate
-        self.incorrect_penalty = incorrect_penalty
+        self.decay_rate = decay_rate
         self.base_knowledge = base_knowledge
         self.exploration_param = exploration_param
-        self._approx_whittle = approximate_whittle_index
+        self._lookup = lookup_whittle_index
         self.rng = rng if rng is not None else np.random.default_rng()
 
-        # Per-category Bayesian estimates
-        # Track running correctness as knowledge proxy
-        self.alpha = np.ones(num_categories)  # Beta posterior: correct + 1
-        self.beta_ = np.ones(num_categories)  # Beta posterior: incorrect + 1
+        # Precompute normalized advantage index
+        self._states, raw_indices = compute_whittle_index_table(
+            learning_rate=learning_rate,
+            incorrect_penalty=incorrect_penalty,
+            decay_rate=decay_rate,
+            base_knowledge=base_knowledge,
+            num_states=50,
+        )
+        idx_min = raw_indices.min()
+        idx_range = raw_indices.max() - idx_min
+        self._indices = (raw_indices - idx_min) / idx_range if idx_range > 0 else np.full_like(raw_indices, 0.5)
+
+        # Beta posterior per category with forgetting
+        self.alpha = np.ones(num_categories)
+        self.beta_ = np.ones(num_categories)
 
         self.attempts = np.zeros(num_categories, dtype=np.int32)
         self.correct = np.zeros(num_categories, dtype=np.int32)
         self.total_questions = 0
         self.time_since_exposure = np.zeros(num_categories, dtype=np.int32)
 
-        # Per-arm decay rate estimate (start with prior)
-        self.decay_estimates = np.full(num_categories, decay_rate_prior)
-        self.decay_observations = [[] for _ in range(num_categories)]
+    def _apply_posterior_forgetting(self) -> None:
+        for i in range(self.num_categories):
+            if self.time_since_exposure[i] > 0:
+                t = self.time_since_exposure[i]
+                decay = math.exp(-self.decay_rate * t)
+                self.alpha[i] = 1.0 + (self.alpha[i] - 1.0) * decay
+                self.beta_[i] = 1.0 + (self.beta_[i] - 1.0) * decay
 
     def select_category(self) -> int:
-        # Explore unvisited first
         for i in range(self.num_categories):
             if self.attempts[i] == 0:
                 return i
+
+        self._apply_posterior_forgetting()
 
         best_score = -float('inf')
         best_cat = 0
 
         for i in range(self.num_categories):
-            # Knowledge estimate from Beta posterior, adjusted for decay
             a, b = self.alpha[i], self.beta_[i]
             k_est = a / (a + b)
-            t = self.time_since_exposure[i]
-            decay = math.exp(-self.decay_estimates[i] * t)
-            k_est = k_est * decay + self.base_knowledge * (1 - decay)
             k_est = max(0.01, min(0.99, k_est))
 
-            # Approximate Whittle index
-            W = self._approx_whittle(
-                k_est, self.learning_rate, self.incorrect_penalty,
-                self.decay_estimates[i], self.base_knowledge,
-            )
+            # Normalized Whittle advantage
+            W = self._lookup(k_est, self._states, self._indices)
 
-            # Decay-aware exploration bonus
-            n_i = self.attempts[i]
-            posterior_std = math.sqrt(a * b / ((a + b) ** 2 * (a + b + 1)))
-            urgency = 1.0 + self.decay_estimates[i] * t
-            bonus = self.exploration_param * posterior_std * urgency * math.sqrt(
-                math.log(self.total_questions + 1) / n_i
-            )
+            # Posterior uncertainty + decay urgency
+            std = math.sqrt(a * b / ((a + b) ** 2 * (a + b + 1)))
+            t = self.time_since_exposure[i]
+            urgency = 1.0 + self.decay_rate * t
 
-            score = W + bonus
+            # Thompson-style sampling: add noise proportional to uncertainty
+            noise = self.rng.normal(0, std * urgency)
+
+            score = W + self.exploration_param * std * urgency + 0.5 * noise
+
             if score > best_score:
                 best_score = score
                 best_cat = i
@@ -1012,22 +1038,6 @@ class PDWhittleSelector(BaseSelector):
             self.beta_[category] += 1
         self.attempts[category] += 1
         self.total_questions += 1
-
-        # Update decay estimate: if we haven't seen this category in a while
-        # and the student gets it wrong more than expected, decay is higher
-        t = self.time_since_exposure[category]
-        if t > 0 and self.attempts[category] > 3:
-            expected_k = (self.alpha[category] - 1) / max(1, self.attempts[category] - 1)
-            actual = 1.0 if correct else 0.0
-            # Simple exponential smoothing of decay estimate
-            if not correct and expected_k > 0.5:
-                # Student was expected to know this but got it wrong → decay higher
-                self.decay_estimates[category] *= 1.05
-            elif correct and expected_k < 0.5:
-                # Student was expected to NOT know but got it right → decay lower
-                self.decay_estimates[category] *= 0.95
-            self.decay_estimates[category] = max(1e-4, min(0.5, self.decay_estimates[category]))
-
         self.time_since_exposure += 1
         self.time_since_exposure[category] = 0
 
@@ -1099,12 +1109,13 @@ SELECTOR_REGISTRY = {
         incorrect_penalty=cfg.incorrect_penalty,
         decay_rate=cfg.decay_rate,
         base_knowledge=cfg.base_knowledge,
+        exploration_param=cfg.exploration_param,
     ),
     "pd_whittle": lambda cfg, rng: PDWhittleSelector(
         cfg.num_categories,
         learning_rate=cfg.learning_rate,
         incorrect_penalty=cfg.incorrect_penalty,
-        decay_rate_prior=cfg.decay_rate,
+        decay_rate=cfg.decay_rate,
         base_knowledge=cfg.base_knowledge,
         exploration_param=cfg.exploration_param,
         rng=rng,

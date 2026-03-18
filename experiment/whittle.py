@@ -158,11 +158,16 @@ def compute_whittle_index_table(
     incorrect_penalty: float = 0.02,
     decay_rate: float = 0.01,
     base_knowledge: float = 0.10,
-    num_states: int = 100,
+    num_states: int = 50,
     discount: float = 0.99,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute a lookup table mapping knowledge state → Whittle index.
+
+    Uses the advantage function: W(k) = V_active(k) - V_passive(k)
+    where V_active/V_passive are the long-run values of always quizzing
+    vs never quizzing from state k. This captures compound learning effects
+    that one-step approximations miss.
 
     Args:
         learning_rate, incorrect_penalty, decay_rate, base_knowledge: model params
@@ -171,17 +176,55 @@ def compute_whittle_index_table(
 
     Returns:
         states: M-vector of knowledge values
-        indices: M-vector of Whittle indices
+        indices: M-vector of advantage-based Whittle indices
     """
     states, P_active, P_passive = build_transition_matrices(
         num_states, learning_rate, incorrect_penalty, decay_rate, base_knowledge
     )
 
-    indices = compute_whittle_indices(
+    indices = compute_advantage_index(
         states, P_active, P_passive, discount=discount
     )
 
     return states, indices
+
+
+def compute_advantage_index(
+    states: np.ndarray,
+    P_active: np.ndarray,
+    P_passive: np.ndarray,
+    discount: float = 0.99,
+    n_iterations: int = 500,
+) -> np.ndarray:
+    """
+    Compute advantage-based index: W(k) = V_active(k) - V_passive(k).
+
+    V_active = long-run value under always-quiz policy.
+    V_passive = long-run value under never-quiz policy.
+    The difference captures the total benefit of quizzing from each state.
+
+    This is faster than exact Whittle index computation and captures
+    multi-step compound learning effects.
+    """
+    M = len(states)
+    reward = states.copy()  # reward = knowledge value
+
+    V_active = np.zeros(M)
+    V_passive = np.zeros(M)
+
+    for _ in range(n_iterations):
+        V_active_new = reward + discount * P_active @ V_active
+        V_passive_new = reward + discount * P_passive @ V_passive
+
+        if (np.max(np.abs(V_active_new - V_active)) < 1e-8 and
+                np.max(np.abs(V_passive_new - V_passive)) < 1e-8):
+            break
+
+        V_active = V_active_new
+        V_passive = V_passive_new
+
+    advantage = V_active - V_passive
+    return advantage
 
 
 def lookup_whittle_index(
