@@ -68,13 +68,14 @@ class FittedParams:
     """Student model parameters fitted from real data."""
     learning_rate: float  # alpha
     incorrect_penalty: float  # beta
-    decay_rate: float  # lambda (per-second, converted to per-timestep)
+    decay_rate: float  # lambda per time_unit
     base_knowledge: float  # floor after forgetting
     initial_knowledge_mean: float
     fit_loss: float  # final loss value
     dataset_name: str
     num_students_used: int
     num_interactions_used: int
+    time_unit: float = 1.0  # seconds per unit used during fitting
 
     def to_dict(self) -> dict:
         return {
@@ -82,6 +83,7 @@ class FittedParams:
             "incorrect_penalty": self.incorrect_penalty,
             "decay_rate": self.decay_rate,
             "base_knowledge": self.base_knowledge,
+            "time_unit": self.time_unit,
             "initial_knowledge_mean": self.initial_knowledge_mean,
             "fit_loss": self.fit_loss,
             "dataset_name": self.dataset_name,
@@ -350,27 +352,29 @@ def _build_dataset_from_df(
 
 def fit_student_model(dataset: RealDataset,
                       max_students: int = 200,
-                      time_unit: float = 1.0) -> FittedParams:
+                      time_unit: float = 0.0,
+                      n_restarts: int = 5) -> FittedParams:
     """
     Fit student model parameters (α, β, λ, base) from real data via MLE.
 
     The model:
       - On correct answer: k += α * (1 - k)
       - On incorrect answer: k -= β * k
-      - Forgetting: k = base + (k - base) * exp(-λ * delta)
+      - Forgetting: k = base + (k - base) * exp(-λ * delta/time_unit)
       - P(correct) = k
 
-    We maximize log-likelihood of observed correct/incorrect outcomes.
+    λ is fitted in units of per-time_unit. The time_unit is stored so
+    replay evaluation can use the same timescale.
 
     Args:
         dataset: Preprocessed real dataset
         max_students: Max students to use for fitting (for speed)
-        time_unit: Seconds per timestep for decay rate conversion.
-                   e.g., 86400 means λ is per-day.
+        time_unit: Seconds per unit for decay. 0 = auto-detect (median delta).
+        n_restarts: Number of random restarts for optimizer
     """
     traces = dataset.traces[:max_students]
 
-    # Compute median inter-skill delta for time normalization
+    # Compute time unit from data if not provided
     all_deltas = []
     for trace in traces:
         for ix in trace.interactions:
@@ -378,25 +382,19 @@ def fit_student_model(dataset: RealDataset,
                 all_deltas.append(ix.delta)
     if all_deltas:
         median_delta = float(np.median(all_deltas))
-        if time_unit == 1.0:
-            # Auto-detect: use median delta as the "timestep"
-            time_unit = max(median_delta, 1.0)
-    logger.info(f"Time unit for decay: {time_unit:.1f} seconds")
+    else:
+        median_delta = 1.0
+
+    if time_unit <= 0:
+        time_unit = max(median_delta, 1.0)
+    logger.info(f"Time unit for decay: {time_unit:.1f} seconds (median delta: {median_delta:.1f}s)")
 
     def neg_log_likelihood(params):
         alpha, beta, lam, base, k0 = params
-        # Clamp to valid ranges
-        alpha = np.clip(alpha, 1e-4, 0.5)
-        beta = np.clip(beta, 1e-4, 0.3)
-        lam = np.clip(lam, 1e-6, 1.0)
-        base = np.clip(base, 0.01, 0.5)
-        k0 = np.clip(k0, 0.05, 0.95)
-
         total_nll = 0.0
         n_obs = 0
 
         for trace in traces:
-            # Per-skill knowledge for this student
             knowledge = {}
 
             for ix in trace.interactions:
@@ -404,15 +402,14 @@ def fit_student_model(dataset: RealDataset,
                 if sid not in knowledge:
                     knowledge[sid] = k0
 
-                # Apply forgetting
+                # Apply forgetting using real delta
                 if ix.delta > 0:
                     dt = ix.delta / time_unit
                     k = knowledge[sid]
                     knowledge[sid] = base + (k - base) * math.exp(-lam * dt)
 
-                k = np.clip(knowledge[sid], 1e-6, 1 - 1e-6)
+                k = max(1e-6, min(1 - 1e-6, knowledge[sid]))
 
-                # Log-likelihood
                 if ix.correct:
                     total_nll -= math.log(k)
                 else:
@@ -424,50 +421,63 @@ def fit_student_model(dataset: RealDataset,
                     knowledge[sid] = k + alpha * (1 - k)
                 else:
                     knowledge[sid] = k - beta * k
-
-                knowledge[sid] = np.clip(knowledge[sid], 0.01, 0.99)
+                knowledge[sid] = max(0.01, min(0.99, knowledge[sid]))
 
         return total_nll / max(n_obs, 1)
 
-    # Optimize
-    x0 = [0.12, 0.02, 0.01, 0.10, 0.35]
     bounds = [
         (1e-4, 0.5),   # alpha
         (1e-4, 0.3),   # beta
-        (1e-6, 1.0),   # lambda
+        (1e-6, 2.0),   # lambda (per time_unit)
         (0.01, 0.5),   # base
         (0.05, 0.95),  # k0
     ]
 
-    logger.info("Fitting student model parameters via MLE...")
-    result = minimize(
-        neg_log_likelihood, x0, method="L-BFGS-B", bounds=bounds,
-        options={"maxiter": 200, "ftol": 1e-6},
-    )
+    # Multiple restarts to avoid local optima
+    rng = np.random.default_rng(42)
+    starts = [
+        [0.12, 0.02, 0.01, 0.10, 0.35],  # default
+    ]
+    for _ in range(n_restarts - 1):
+        starts.append([
+            rng.uniform(b[0], b[1]) for b in bounds
+        ])
 
-    alpha, beta, lam, base, k0 = result.x
-    # Convert lambda from per-time-unit to per-timestep
-    # In our simulation, one timestep = one question, so lambda stays as-is
-    # but we store the time_unit for reference.
+    best_result = None
+    best_loss = float('inf')
 
+    logger.info(f"Fitting student model ({n_restarts} restarts)...")
+    for i, x0 in enumerate(starts):
+        result = minimize(
+            neg_log_likelihood, x0, method="L-BFGS-B", bounds=bounds,
+            options={"maxiter": 300, "ftol": 1e-8},
+        )
+        if result.fun < best_loss:
+            best_loss = result.fun
+            best_result = result
+        logger.info(f"  Restart {i+1}/{n_restarts}: loss={result.fun:.6f}")
+
+    alpha, beta, lam, base, k0 = best_result.x
     total_interactions = sum(len(t.interactions) for t in traces)
 
     fitted = FittedParams(
-        learning_rate=float(np.clip(alpha, 1e-4, 0.5)),
-        incorrect_penalty=float(np.clip(beta, 1e-4, 0.3)),
-        decay_rate=float(np.clip(lam, 1e-6, 1.0)),
-        base_knowledge=float(np.clip(base, 0.01, 0.5)),
-        initial_knowledge_mean=float(np.clip(k0, 0.05, 0.95)),
-        fit_loss=float(result.fun),
+        learning_rate=float(alpha),
+        incorrect_penalty=float(beta),
+        decay_rate=float(lam),
+        base_knowledge=float(base),
+        initial_knowledge_mean=float(k0),
+        fit_loss=float(best_result.fun),
         dataset_name=dataset.name,
         num_students_used=len(traces),
         num_interactions_used=total_interactions,
+        time_unit=time_unit,
     )
 
     logger.info(
-        f"Fitted params: α={fitted.learning_rate:.4f}, β={fitted.incorrect_penalty:.4f}, "
-        f"λ={fitted.decay_rate:.4f}, base={fitted.base_knowledge:.4f}, "
-        f"k0={fitted.initial_knowledge_mean:.4f}, loss={fitted.fit_loss:.4f}"
+        f"Best fit: α={fitted.learning_rate:.4f}, β={fitted.incorrect_penalty:.4f}, "
+        f"λ={fitted.decay_rate:.6f}/unit, base={fitted.base_knowledge:.4f}, "
+        f"k0={fitted.initial_knowledge_mean:.4f}, loss={fitted.fit_loss:.6f}, "
+        f"time_unit={fitted.time_unit:.1f}s"
     )
 
     return fitted
@@ -562,8 +572,9 @@ def replay_evaluate(
                 random_seed=42,
             )
 
-            # Create selector
-            rng = np.random.default_rng(hash(trace.student_id) % (2**31))
+            # Create selector (deterministic seed from student index)
+            student_idx = dataset.traces.index(trace)
+            rng = np.random.default_rng(42 + student_idx)
             selector = create_selector(algo_name, config, rng=rng)
 
             # Knowledge state (model-based)
@@ -580,8 +591,11 @@ def replay_evaluate(
                 local_skill = skill_map[ix.skill_id]
                 skill_queues[local_skill].append((ix.correct, ix.delta))
 
-            # Track time since exposure for forgetting
-            time_since_exposure = np.zeros(n_cats, dtype=np.float64)
+            # Track time since exposure in real seconds (not steps)
+            last_exposure_time = np.zeros(n_cats, dtype=np.float64)
+            current_time = 0.0
+            # Use median delta as step size when no real delta available
+            median_delta = fitted_params.time_unit
 
             correct_count = 0
             total_count = 0
@@ -594,24 +608,28 @@ def replay_evaluate(
                 # Bandit selects a category
                 cat = selector.select_category()
 
-                # Apply forgetting to all categories
+                # Apply forgetting to all categories using real time
                 for i in range(n_cats):
-                    if time_since_exposure[i] > 0:
-                        dt = time_since_exposure[i]
+                    dt_seconds = current_time - last_exposure_time[i]
+                    if dt_seconds > 0:
+                        dt = dt_seconds / fitted_params.time_unit
                         knowledge[i] = (
                             fitted_params.base_knowledge
                             + (knowledge[i] - fitted_params.base_knowledge)
                             * math.exp(-fitted_params.decay_rate * dt)
                         )
-                        knowledge[i] = np.clip(knowledge[i], 0.01, 0.99)
+                        knowledge[i] = max(0.01, min(0.99, knowledge[i]))
 
                 # Get outcome: use real data if available, else simulate
                 if skill_queues[cat]:
                     real_correct, real_delta = skill_queues[cat].popleft()
                     correct = real_correct
+                    # Advance time by real delta
+                    current_time += max(real_delta, 0.0)
                 else:
-                    # No real data for this skill at this point; simulate
+                    # No real data; simulate outcome and advance by median delta
                     correct = rng.random() < knowledge[cat]
+                    current_time += median_delta
 
                 # Update knowledge
                 if correct:
@@ -619,15 +637,14 @@ def replay_evaluate(
                     correct_count += 1
                 else:
                     knowledge[cat] -= fitted_params.incorrect_penalty * knowledge[cat]
-                knowledge[cat] = np.clip(knowledge[cat], 0.01, 0.99)
+                knowledge[cat] = max(0.01, min(0.99, knowledge[cat]))
 
                 # Update selector
                 selector.update(cat, correct)
                 total_count += 1
 
-                # Update time tracking
-                time_since_exposure += 1
-                time_since_exposure[cat] = 0
+                # Record exposure time for this category
+                last_exposure_time[cat] = current_time
 
                 trajectory_knowledge.append(float(np.mean(knowledge)))
                 trajectory_weakest.append(float(np.min(knowledge)))

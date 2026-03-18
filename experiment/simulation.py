@@ -495,7 +495,9 @@ class MultiAlgorithmExperiment:
                 students.append(student)
 
                 # Selector RNG: different per algorithm to avoid correlation
-                sel_seed = (student_seed + hash(algo)) % (2**31) if student_seed else None
+                # Use algorithm index (not hash) for deterministic seeding
+                algo_idx = self.algorithms.index(algo)
+                sel_seed = (student_seed + (algo_idx + 1) * 10000) if student_seed else None
                 sel_rng = np.random.default_rng(sel_seed)
                 sel = create_selector(algo, self.config, rng=sel_rng)
 

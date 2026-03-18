@@ -39,10 +39,25 @@
 - Duolingo (easy, λ≈0): all algorithms ~0.90, Leitner narrowly best. BKT-Bandit +2.9% weakest-cat over Random.
 - ASSISTments (hard, λ=0.003): Random wins — adaptive algorithms don't help. Sim-to-real gap.
 
-### Open issues
-1. **Oracle anomaly at high K**: "always quiz weakest" genuinely backfires — worth investigating if this is a fundamental limitation or implementation issue
-2. **ASSISTments negative result**: structural differences (variable skills per student, non-uniform difficulty). Good for paper honesty, motivates future work.
-3. **Missing K=50 d=0.05 s=456**: one CSV didn't transfer, have 2/3 seeds for that config
+### Full Code Audit
+Ran 3 parallel audits: selectors, simulation framework, real data pipeline.
+
+**Selectors: All 10 correctly implemented** — no algorithm bugs found. Formulas, edge cases, posterior updates all verified.
+
+**Simulation bugs found and fixed:**
+1. **CRITICAL: `hash(algo)` for selector seeding** — Python hash() is non-deterministic across runs (PYTHONHASHSEED). Fixed: use `algo_index * 10000` offset instead.
+
+**Real data pipeline bugs found and fixed (explains ASSISTments negative):**
+1. **CRITICAL: Timescale mismatch** — decay_rate fitted in per-time_unit (seconds), but replay used per-step. Fixed: replay now uses real deltas from data and time_unit from fitted params.
+2. **CRITICAL: Delta discarded in replay** — `real_delta` was loaded but ignored. Fixed: replay advances `current_time` by `real_delta` and computes forgetting in real seconds.
+3. **HIGH: Single optimizer initialization** — L-BFGS-B with one start point. Fixed: 5 random restarts.
+4. **HIGH: Clipping inside objective** — broke L-BFGS-B gradients at boundaries. Fixed: removed, rely on `bounds` parameter.
+5. **MEDIUM: `hash(student_id)` in replay** — non-deterministic. Fixed: use `42 + student_index`.
+6. **Added `time_unit` to FittedParams** — stored and used consistently between fit and replay.
+
+### Rerun 3 submitted
+- `bash slurm/submit_fixed_real_data.sh` → 7 jobs (3 Duolingo + 3 ASSISTments + 1 missing K=50)
+- ASSISTments results should now be meaningful with the fixed pipeline, have 2/3 seeds for that config
 
 ---
 
