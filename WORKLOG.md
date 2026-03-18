@@ -57,7 +57,13 @@ Ran 3 parallel audits: selectors, simulation framework, real data pipeline.
 
 ### Rerun 3 submitted
 - `bash slurm/submit_fixed_real_data.sh` → 7 jobs (3 Duolingo + 3 ASSISTments + 1 missing K=50)
-- ASSISTments results should now be meaningful with the fixed pipeline, have 2/3 seeds for that config
+- ASSISTments results should now be meaningful with the fixed pipeline
+
+### What's next (after rerun 3 finishes)
+- Transfer and analyze corrected real data results
+- Verify ASSISTments now shows adaptive algorithm advantages
+- Phase G: Theory (F-UCB regret bounds, BKT-Bandit convergence)
+- Phase H: Paper writing (last), have 2/3 seeds for that config
 
 ---
 
