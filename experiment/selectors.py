@@ -1241,35 +1241,37 @@ class MetaSelector(BaseSelector):
         self.base_rewards = np.zeros(self.M)
         self._expert_counts = np.zeros(self.M)
         self._expert_correct = np.zeros(self.M)
+        self._expert_knowledge_gain = np.zeros(self.M)
         self._chosen_expert = 0
+        self._prev_avg = 0.5
 
     def select_category(self) -> int:
         # Get recommendations from all base selectors
         self._last_recommendations = [b.select_category() for b in self.bases]
 
-        # Phase 1: Round-robin warm-up (cycle through experts)
-        if self.total_questions < self.M * 10:
+        # Phase 1: Extended round-robin warm-up
+        if self.total_questions < self.M * 20:
             chosen = self.total_questions % self.M
             self._chosen_expert = chosen
             return self._last_recommendations[chosen]
 
-        # Phase 2: Follow the leader with short evaluation windows
-        # Track recent performance of each expert in sliding windows
-        # Pick the expert with best recent correctness rate
-        best_expert = int(np.argmax(self._recent_rates()))
-        self._chosen_expert = best_expert
-        return self._last_recommendations[best_expert]
-
-    def _recent_rates(self) -> np.ndarray:
-        """Compute recent correctness rate for each expert."""
-        rates = np.zeros(self.M)
+        # Phase 2: UCB over experts using cumulative correctness rate
+        # Key insight: over long horizons, the expert that produces the
+        # highest knowledge also produces the highest CUMULATIVE correctness
+        # because more knowledgeable students answer more correctly.
+        scores = np.zeros(self.M)
         for i in range(self.M):
             n = self._expert_counts[i]
             if n > 0:
-                rates[i] = self._expert_correct[i] / n
+                scores[i] = self._expert_correct[i] / n
+                # UCB exploration bonus
+                scores[i] += math.sqrt(2 * math.log(self.total_questions + 1) / n)
             else:
-                rates[i] = 0.5  # prior
-        return rates
+                scores[i] = float('inf')
+
+        best_expert = int(np.argmax(scores))
+        self._chosen_expert = best_expert
+        return self._last_recommendations[best_expert]
 
     def update(self, category: int, correct: bool) -> None:
         # Update ALL base selectors
@@ -1283,8 +1285,8 @@ class MetaSelector(BaseSelector):
             self._expert_correct[chosen] += 1
         self.base_rewards[chosen] += (1.0 if correct else 0.0)
 
-        # Sliding window: decay old observations
-        decay = 0.999
+        # Slow decay to favor recent performance while keeping history
+        decay = 0.9995
         self._expert_counts *= decay
         self._expert_correct *= decay
 
@@ -1301,7 +1303,9 @@ class MetaSelector(BaseSelector):
         self.base_rewards = np.zeros(self.M)
         self._expert_counts = np.zeros(self.M)
         self._expert_correct = np.zeros(self.M)
+        self._expert_knowledge_gain = np.zeros(self.M)
         self._chosen_expert = 0
+        self._prev_avg = 0.5
         for b in self.bases:
             b.reset()
 
