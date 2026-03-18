@@ -842,6 +842,7 @@ class WhittleIndexSelector(BaseSelector):
             decay_rate=decay_rate,
             base_knowledge=base_knowledge,
             num_states=50,
+            num_categories=num_categories,
         )
         # Normalize indices to [0, 1] for proper combination with exploration
         idx_min = self._raw_indices.min()
@@ -974,6 +975,7 @@ class PDWhittleSelector(BaseSelector):
             decay_rate=decay_rate,
             base_knowledge=base_knowledge,
             num_states=50,
+            num_categories=num_categories,
         )
         idx_min = raw_indices.min()
         idx_range = raw_indices.max() - idx_min

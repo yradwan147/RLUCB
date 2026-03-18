@@ -160,19 +160,21 @@ def compute_whittle_index_table(
     base_knowledge: float = 0.10,
     num_states: int = 50,
     discount: float = 0.99,
+    num_categories: int = 6,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute a lookup table mapping knowledge state → Whittle index.
 
-    Uses the advantage function: W(k) = V_active(k) - V_passive(k)
-    where V_active/V_passive are the long-run values of always quizzing
-    vs never quizzing from state k. This captures compound learning effects
-    that one-step approximations miss.
+    Uses the advantage function: W(k) = V_mixed(k) - V_passive(k)
+    where V_mixed is the value under quiz-with-probability-1/K policy.
+    This accounts for the budget constraint (only 1 quiz per step across
+    K categories) and captures compound learning effects.
 
     Args:
         learning_rate, incorrect_penalty, decay_rate, base_knowledge: model params
         num_states: discretization granularity
         discount: discount factor
+        num_categories: K — number of arms (affects active_fraction = 1/K)
 
     Returns:
         states: M-vector of knowledge values
@@ -182,8 +184,10 @@ def compute_whittle_index_table(
         num_states, learning_rate, incorrect_penalty, decay_rate, base_knowledge
     )
 
+    active_fraction = 1.0 / max(1, num_categories)
     indices = compute_advantage_index(
-        states, P_active, P_passive, discount=discount
+        states, P_active, P_passive, discount=discount,
+        active_fraction=active_fraction,
     )
 
     return states, indices
@@ -195,35 +199,41 @@ def compute_advantage_index(
     P_passive: np.ndarray,
     discount: float = 0.99,
     n_iterations: int = 500,
+    active_fraction: float = 1.0,
 ) -> np.ndarray:
     """
-    Compute advantage-based index: W(k) = V_active(k) - V_passive(k).
+    Compute advantage-based index: W(k) = V_mixed(k) - V_passive(k).
 
-    V_active = long-run value under always-quiz policy.
+    V_mixed = long-run value under quiz-with-probability-p policy.
     V_passive = long-run value under never-quiz policy.
-    The difference captures the total benefit of quizzing from each state.
 
-    This is faster than exact Whittle index computation and captures
-    multi-step compound learning effects.
+    When active_fraction < 1.0, this accounts for the fact that with K
+    arms and 1 quiz per step, each arm is only quizzed ~1/K of the time.
+    The mixed transition is: P_mix = p * P_active + (1-p) * P_passive.
+
+    This gives a more realistic advantage estimate for large K.
     """
     M = len(states)
-    reward = states.copy()  # reward = knowledge value
+    reward = states.copy()
 
-    V_active = np.zeros(M)
+    # Mixed transition: quiz with probability active_fraction
+    P_mixed = active_fraction * P_active + (1 - active_fraction) * P_passive
+
+    V_mixed = np.zeros(M)
     V_passive = np.zeros(M)
 
     for _ in range(n_iterations):
-        V_active_new = reward + discount * P_active @ V_active
+        V_mixed_new = reward + discount * P_mixed @ V_mixed
         V_passive_new = reward + discount * P_passive @ V_passive
 
-        if (np.max(np.abs(V_active_new - V_active)) < 1e-8 and
+        if (np.max(np.abs(V_mixed_new - V_mixed)) < 1e-8 and
                 np.max(np.abs(V_passive_new - V_passive)) < 1e-8):
             break
 
-        V_active = V_active_new
+        V_mixed = V_mixed_new
         V_passive = V_passive_new
 
-    advantage = V_active - V_passive
+    advantage = V_mixed - V_passive
     return advantage
 
 
