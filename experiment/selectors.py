@@ -1066,6 +1066,142 @@ class PDWhittleSelector(BaseSelector):
         return self.attempts.copy()
 
 
+class AdaptiveWhittleSelector(BaseSelector):
+    """
+    Adaptive Whittle selector that blends Whittle advantage with F-UCB-style
+    urgency based on the estimated forgetting rate.
+
+    At low decay: behaves like Whittle (principled MDP-based selection).
+    At high decay: shifts toward urgency-based selection (like F-UCB).
+    The blend weight adapts online based on observed performance drops after gaps.
+    """
+
+    def __init__(
+        self,
+        num_categories: int,
+        learning_rate: float = 0.12,
+        incorrect_penalty: float = 0.02,
+        decay_rate: float = 0.01,
+        base_knowledge: float = 0.10,
+        exploration_param: float = 1.414,
+        rng: Optional[np.random.Generator] = None,
+    ):
+        from .whittle import compute_whittle_index_table, lookup_whittle_index
+
+        self.num_categories = num_categories
+        self.decay_rate = decay_rate
+        self.base_knowledge = base_knowledge
+        self.exploration_param = exploration_param
+        self.rng = rng if rng is not None else np.random.default_rng()
+        self._lookup = lookup_whittle_index
+
+        states, raw = compute_whittle_index_table(
+            learning_rate, incorrect_penalty, decay_rate, base_knowledge,
+            num_states=50, num_categories=num_categories,
+        )
+        self._states = states
+        mn, rng_v = raw.min(), raw.max() - raw.min()
+        self._indices = (raw - mn) / rng_v if rng_v > 0 else np.full_like(raw, 0.5)
+
+        self.alpha = np.ones(num_categories)
+        self.beta_ = np.ones(num_categories)
+        self.attempts = np.zeros(num_categories, dtype=np.int32)
+        self.correct = np.zeros(num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self.time_since_exposure = np.zeros(num_categories, dtype=np.int32)
+        self.gap_surprises: list = []
+        self.effective_decay = decay_rate
+
+    def select_category(self) -> int:
+        for i in range(self.num_categories):
+            if self.attempts[i] == 0:
+                return i
+
+        # Apply forgetting to posteriors
+        for i in range(self.num_categories):
+            if self.time_since_exposure[i] > 0:
+                d = math.exp(-self.effective_decay * self.time_since_exposure[i])
+                self.alpha[i] = 1.0 + (self.alpha[i] - 1.0) * d
+                self.beta_[i] = 1.0 + (self.beta_[i] - 1.0) * d
+
+        # Urgency weight: higher when decay is faster
+        urgency_weight = min(1.0, self.effective_decay * 20)
+
+        best_score = -float('inf')
+        best_cat = 0
+
+        for i in range(self.num_categories):
+            a, b = self.alpha[i], self.beta_[i]
+            mean_k = a / (a + b)
+            std = math.sqrt(a * b / ((a + b) ** 2 * (a + b + 1)))
+            t = self.time_since_exposure[i]
+
+            # Whittle advantage
+            k_est = max(0.01, min(0.99, mean_k))
+            W = self._lookup(k_est, self._states, self._indices)
+
+            # F-UCB-style urgency
+            decay_factor = math.exp(-self.effective_decay * t)
+            urgency = 1 - decay_factor
+
+            # Adaptive blend
+            score = (1 - urgency_weight) * W + urgency_weight * urgency
+
+            # Exploration bonus
+            score += self.exploration_param * std * (1 + self.effective_decay * t)
+
+            if score > best_score:
+                best_score = score
+                best_cat = i
+
+        return best_cat
+
+    def update(self, category: int, correct: bool) -> None:
+        t = self.time_since_exposure[category]
+        if t > 5 and self.attempts[category] > 2:
+            expected = self.alpha[category] / (self.alpha[category] + self.beta_[category])
+            surprise = abs((1.0 if correct else 0.0) - expected)
+            self.gap_surprises.append(surprise)
+            if len(self.gap_surprises) >= 20:
+                avg_surprise = float(np.mean(self.gap_surprises[-20:]))
+                self.effective_decay = self.decay_rate * (1 + avg_surprise * 5)
+                self.effective_decay = max(0.001, min(0.2, self.effective_decay))
+
+        if correct:
+            self.alpha[category] += 1
+            self.correct[category] += 1
+        else:
+            self.beta_[category] += 1
+        self.attempts[category] += 1
+        self.total_questions += 1
+        self.time_since_exposure += 1
+        self.time_since_exposure[category] = 0
+
+    def reset(self) -> None:
+        self.alpha = np.ones(self.num_categories)
+        self.beta_ = np.ones(self.num_categories)
+        self.attempts = np.zeros(self.num_categories, dtype=np.int32)
+        self.correct = np.zeros(self.num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self.time_since_exposure = np.zeros(self.num_categories, dtype=np.int32)
+        self.gap_surprises = []
+        self.effective_decay = self.decay_rate
+
+    def get_statistics(self) -> dict:
+        stats = {}
+        for i in range(self.num_categories):
+            a = int(self.attempts[i])
+            c = int(self.correct[i])
+            stats[f"Category_{i}"] = {
+                "attempts": a, "correct": c, "incorrect": a - c,
+                "correctness_rate": c / a if a > 0 else 0.0,
+            }
+        return stats
+
+    def get_exposure_distribution(self) -> np.ndarray:
+        return self.attempts.copy()
+
+
 # Registry mapping algorithm names to selector factory functions
 SELECTOR_REGISTRY = {
     "random": lambda cfg, rng: RandomSelector(cfg.num_categories, rng=rng),
@@ -1112,6 +1248,15 @@ SELECTOR_REGISTRY = {
         decay_rate=cfg.decay_rate,
         base_knowledge=cfg.base_knowledge,
         exploration_param=cfg.exploration_param,
+    ),
+    "adaptive_whittle": lambda cfg, rng: AdaptiveWhittleSelector(
+        cfg.num_categories,
+        learning_rate=cfg.learning_rate,
+        incorrect_penalty=cfg.incorrect_penalty,
+        decay_rate=cfg.decay_rate,
+        base_knowledge=cfg.base_knowledge,
+        exploration_param=cfg.exploration_param,
+        rng=rng,
     ),
     "pd_whittle": lambda cfg, rng: PDWhittleSelector(
         cfg.num_categories,
