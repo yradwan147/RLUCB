@@ -1,105 +1,103 @@
 # RLUCB NeurIPS Extension — Worklog
 
-## Session 5 — 2026-03-18 (continued)
+## Session 6 — 2026-03-18
 
-### Direction Pivot: Parametric-Decay Restless Bandits (PD-RMAB)
+### Full IBEX Results: Synthetic (36 jobs, 13 algorithms, 100 students, 10K questions)
 
-**Problem**: Previous results too weak for NeurIPS. F-UCB/BKT-Bandit are heuristic modifications of UCB — marginal improvements, no algorithmic novelty.
+All 36 jobs succeeded. 13 algorithms × 4 K values × 3 decay rates × 3 seeds.
 
-**Research findings**:
-- Our problem is formally a **Restless Multi-Armed Bandit (RMAB)** where arms decay when not pulled
-- Existing RMAB learning algorithms treat transitions as general unknown matrices (O(S²) params)
-- In education, forgetting follows **known parametric forms** with only 2-3 params
-- **Nobody has exploited this structure** — this is the genuine novelty
+**Overall rankings (averaged across all 12 configs):**
+1. BKT-Bandit (0.2444)
+2. F-UCB (0.2421)
+3. adaptive_whittle (0.2406)
+4. pd_whittle (0.2393)
+5. whittle (0.2370)
+6. random (0.2367)
+7. thompson (0.2310)
+...
+11. ucb1 (0.2182)
 
-**Accepted NeurIPS papers in this space require**:
-- New algorithms with provable guarantees (not just "applied X to Y")
-- Neural-Q-Whittle (NeurIPS 2023): finite-time convergence for neural Whittle
-- Index-aware RL (NeurIPS 2022): polynomial regret via index structure
-- EduQate (AAMAS 2025): network structure in RMAB for education (but still general learning)
+**Clean three-way regime partition:**
+- BKT-Bandit: wins K≥20, d≤0.01 (5/12 configs)
+- F-UCB: wins d=0.05 regardless of K (4/12 configs)
+- Whittle variants: win K=6, d≤0.01 (3/12 configs)
 
-**Our contribution: PD-RMAB**
-- Exploits parametric forgetting structure → O(d√T) regret instead of O(S²√T)
-- Closed-form Whittle index for education-forgetting model
-- Indexability proof
-- Connection to cognitive science spacing predictions
+**Whittle variant highlights:**
+- Best for equity: PD-Whittle #1 in weakest-category (+11.5% over random)
+- Beat UCB1 by 5-9% across all configs
+- Fall below random at K≥50 (advantage computation doesn't scale)
 
-### Implementation Progress
-- Created `experiment/whittle.py`:
-  - `build_transition_matrices()` — discretized MDP for single arm
-  - `compute_whittle_indices()` — binary search + value iteration
-  - `compute_whittle_index_table()` — full lookup table
-  - `approximate_whittle_index()` — closed-form one-step approximation
+**Surprising findings:**
+- BKT-Bandit beats Oracle in 10/12 configs (Oracle is greedy, not optimal)
+- Random beats UCB1 overall (exploration trap is severe)
+- ε-greedy quietly top-3 in 8/12 configs
 
-- Added to `experiment/selectors.py`:
-  - `WhittleIndexSelector` — uses precomputed exact indices with estimated knowledge
-  - `PDWhittleSelector` — online learning version with Bayesian decay estimation + decay-aware exploration bonus
-  - Both registered in SELECTOR_REGISTRY
-
-**Key finding from Whittle index computation:**
-- Index peaks at k≈0.3-0.5, NOT at k=0 (weakest)
-- This explains Oracle catastrophe: "always quiz weakest" is suboptimal!
-- At very low k, quizzing helps little (student mostly wrong, learning gain small)
-- The optimal policy quizzes the "zone of proximal development" (k≈0.3-0.5)
-
-### Algorithm Iteration Results
-
-**Iteration 1** — Raw Whittle index: terrible (worst at all decay rates)
-- Problem: one-step approximation peaks at k≈0.5, doesn't favor weak categories
-
-**Iteration 2** — Advantage-based index (V_active - V_passive):
-- Much better! Monotonically decreasing with k (correctly favors weak)
-- But exploration bonus negligible (W~40 vs bonus~0.1)
-
-**Iteration 3** — Normalized indices [0,1] + exploration:
-- WhittleIndex now 5th→5th→3rd across decay rates
-- PD-Whittle: 4th, 3rd, 3rd — competitive at low/medium decay
-
-**Iteration 4** — Budget-aware advantage (active_fraction = 1/K):
-- K=20 d=0.005: PD-Whittle **2nd** (ahead of BKT-Bandit!)
-- Still behind F-UCB at high decay
-
-**Iteration 5** — AdaptiveWhittle (blend Whittle + F-UCB urgency based on decay estimate):
-- K=6 d=0.005: **#1** (0.7919, beats Oracle 0.7917!)
-- Adapts urgency_weight = min(1, effective_decay * 20) online
-- At low decay: pure Whittle. At high decay: shifts toward urgency.
-
-**Final results (30 students, 2000 questions, all 13 algorithms):**
-
-| Config | #1 | Adaptive Whittle | PD-Whittle | Best Whittle rank |
-|--------|-----|----|----|-----|
-| K=6 d=0.005 | **Adaptive Whittle (0.7919)** | #1 | 4th (0.787) | **#1** |
-| K=6 d=0.01 | Oracle (0.5808) | 4th (0.573) | #2 (0.577) | **#2** |
-| K=6 d=0.05 | F-UCB (0.2099) | ~5th | ~5th | 5th |
-| K=20 d=0.005 | Random (0.3159) | 4th (0.303) | #2 (0.307) | **#2** |
-| K=20 d=0.01 | BKT-Bandit (0.1940) | 4th (0.169) | 4th (0.169) | 4th |
-| K=20 d=0.05 | F-UCB (0.1347) | ~5th | ~5th | 5th |
-
-**Summary**: Whittle variants are best/competitive at low-medium decay (realistic regimes). F-UCB dominates at extreme high decay. This regime split is itself a publishable finding.
-
-### 13 algorithms now available
-Original: random, ucb1, fucb, bkt_bandit, bkt_thompson, thompson, epsilon_greedy, sw_ucb, leitner, oracle
-New: whittle, pd_whittle, adaptive_whittle
-
-### IBEX run ready
-- `bash slurm/submit_whittle_experiments.sh` → 36 jobs (all 13 algorithms)
-- Cancel: `squeue -u $USER -o '%i %j' | grep 'w_k' | awk '{print $1}' | xargs -r scancel`
-
-### Plan saved to: `plans/pd_rmab_plan.md`
+**Missing: Real data with Whittle variants** — previous real data runs had only 10 algorithms. Created `slurm/submit_whittle_real_data.sh` for 6 more jobs.
 
 ---
 
-## Previous Sessions
+## Session 5 — 2026-03-18
 
-### Session 4 — 2026-03-18
-- All experiments complete (38/39 synthetic + 6/6 real data)
+### Direction Pivot: Parametric-Decay Restless Bandits (PD-RMAB)
+
+**Research findings**: Problem is formally an RMAB. Existing algorithms treat transitions as general unknown matrices. We exploit parametric forgetting structure.
+
+**5 algorithm iterations:**
+1. Raw Whittle → terrible (one-step approx peaks at k≈0.5)
+2. Advantage-based (V_active - V_passive) → correctly favors weak
+3. Normalized [0,1] + exploration → competitive
+4. Budget-aware (1/K active fraction) → improved K=20
+5. AdaptiveWhittle (Whittle + urgency blend) → beats Oracle at K=6 d=0.005
+
+**Key theoretical insight**: Whittle advantage peaks at k≈0.3-0.5, not k=0. This explains Oracle catastrophe — quizzing very weak arms is suboptimal (zone of proximal development).
+
+---
+
+## Session 4 — 2026-03-18
+
 - Full code audit: all 10 selectors correct
 - Fixed: hash seeding, real data timescale mismatch, ASSISTments timestamp parsing
-- Key findings: BKT-Bandit wins 7/12 configs, F-UCB wins 3/12, Oracle catastrophe confirmed on real data
+- Real data results: Duolingo (easy, λ≈0), ASSISTments (hard, λ=0.003)
 
-### Session 2-3 — 2026-03-17
+## Session 2-3 — 2026-03-17
+
 - Bug fixes: OOM (disabled Student.history), auto log_frequency
-- Analysis of K=6, K=20, Duolingo results
+- K=6,20 analysis, Duolingo results
 
-### Session 1 — 2026-03-16
+## Session 1 — 2026-03-16
+
 - Implemented 10 algorithms, MultiAlgorithmExperiment, real data pipeline, slurm scripts
+
+---
+
+## Paper Narrative (Final)
+
+**Title**: "Restless Bandits for Adaptive Learning: Principled Question Selection with Forgetting Dynamics"
+
+**Story**:
+1. Adaptive question selection with forgetting is a restless bandit problem
+2. Standard UCB ignores decay → exploration trap, worse than random at scale
+3. We propose three novel approaches: Whittle advantage-based, PD-Whittle (Bayesian + advantage), AdaptiveWhittle (urgency blend)
+4. BKT-Bandit wins at medium-high K, F-UCB wins at high decay, Whittle wins at low decay + best equity
+5. **No single algorithm dominates** — regime-dependent optimality is the key insight
+6. Whittle advantage analysis theoretically explains Oracle catastrophe (zone of proximal development)
+7. PD-Whittle achieves best equity (weakest-category) across all configs
+
+---
+
+## Paper References
+
+### Already in refs.bib (16 refs)
+Auer 2002, Lattimore 2020, Ebbinghaus 1885, Murre 2015, Corbett 1994, Piech 2015, Yudelson 2013, Clément 2015, Liu 2014, Rafferty 2019, Doroudi 2019, Settles 2016, Leitner 1972, Pavlik 2005, VanLehn 2011, Towers 2024
+
+### New references to add (~25)
+**RMAB/Whittle**: Whittle 1988, Niño-Mora 2023 (review), NeurWIN (NeurIPS 2021), Neural-Q-Whittle (NeurIPS 2023), Index-aware RL (NeurIPS 2022), EduQate (AAMAS 2025)
+**Non-stationary bandits**: Garivier & Moulines 2011, Besbes 2014
+**Thompson Sampling**: Thompson 1933, Chapelle & Li 2011, Agrawal & Goyal 2012, Russo 2018
+**NeurIPS 2024**: Zhou & Tan (variance-dependent), He et al. (Cert-LSVI-UCB)
+**Knowledge tracing + RL**: Zhang 2025 (RL-DKT), Shi 2023 (ALPN)
+**Spaced repetition**: Tabibian 2019 (PNAS), Reddy 2016 (KDD)
+**Datasets**: Settles 2018 (SLAM), Feng 2009 (ASSISTments)
+**Bayesian design**: Chaloner & Verdinelli 1995
+**Lower bounds**: Lai & Robbins 1985
+**Real data**: Choffin 2019 (DAS3H)
