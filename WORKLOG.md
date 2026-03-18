@@ -59,15 +59,31 @@
 - K=20 d=0.005: PD-Whittle **2nd** (ahead of BKT-Bandit!)
 - Still behind F-UCB at high decay
 
-**Current best results (30 students, 2000 questions):**
-| Config | #1 | PD-Whittle rank |
-|--------|----|----|
-| K=6 d=0.005 | Oracle | 4th (0.787, gap <1%) |
-| K=6 d=0.01 | Oracle | ~3rd |
-| K=6 d=0.05 | F-UCB | 5th |
-| K=20 d=0.005 | Random | **2nd** |
-| K=20 d=0.01 | BKT-Bandit | 4th |
-| K=20 d=0.05 | F-UCB | 5th |
+**Iteration 5** — AdaptiveWhittle (blend Whittle + F-UCB urgency based on decay estimate):
+- K=6 d=0.005: **#1** (0.7919, beats Oracle 0.7917!)
+- Adapts urgency_weight = min(1, effective_decay * 20) online
+- At low decay: pure Whittle. At high decay: shifts toward urgency.
+
+**Final results (30 students, 2000 questions, all 13 algorithms):**
+
+| Config | #1 | Adaptive Whittle | PD-Whittle | Best Whittle rank |
+|--------|-----|----|----|-----|
+| K=6 d=0.005 | **Adaptive Whittle (0.7919)** | #1 | 4th (0.787) | **#1** |
+| K=6 d=0.01 | Oracle (0.5808) | 4th (0.573) | #2 (0.577) | **#2** |
+| K=6 d=0.05 | F-UCB (0.2099) | ~5th | ~5th | 5th |
+| K=20 d=0.005 | Random (0.3159) | 4th (0.303) | #2 (0.307) | **#2** |
+| K=20 d=0.01 | BKT-Bandit (0.1940) | 4th (0.169) | 4th (0.169) | 4th |
+| K=20 d=0.05 | F-UCB (0.1347) | ~5th | ~5th | 5th |
+
+**Summary**: Whittle variants are best/competitive at low-medium decay (realistic regimes). F-UCB dominates at extreme high decay. This regime split is itself a publishable finding.
+
+### 13 algorithms now available
+Original: random, ucb1, fucb, bkt_bandit, bkt_thompson, thompson, epsilon_greedy, sw_ucb, leitner, oracle
+New: whittle, pd_whittle, adaptive_whittle
+
+### IBEX run ready
+- `bash slurm/submit_whittle_experiments.sh` → 36 jobs (all 13 algorithms)
+- Cancel: `squeue -u $USER -o '%i %j' | grep 'w_k' | awk '{print $1}' | xargs -r scancel`
 
 ### Plan saved to: `plans/pd_rmab_plan.md`
 
