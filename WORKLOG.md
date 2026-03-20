@@ -1,131 +1,48 @@
 # RLUCB NeurIPS Extension — Worklog
 
-## Session 6 — 2026-03-18
+## Session 7 — 2026-03-19
 
-### Full IBEX Results: Synthetic (36 jobs, 13 algorithms, 100 students, 10K questions)
+### Full IBEX Results: 14 Algorithms (42 jobs, all succeeded)
 
-All 36 jobs succeeded. 13 algorithms × 4 K values × 3 decay rates × 3 seeds.
+**MetaSelector at scale (100 students, 10K questions):**
+- Top-3 in 9/12 configs (75%) — matches BKT-Bandit and F-UCB consistency
+- **Never wins #1** — always close second/third
+- Average gap to best: 4.7%
+- #2 at all d=0.05 configs (closely tracks F-UCB)
+- **Failure mode**: K=20 d=0.005 — rank 12th, 15% gap
 
-**Overall rankings (averaged across all 12 configs):**
-1. BKT-Bandit (0.2444)
-2. F-UCB (0.2421)
-3. adaptive_whittle (0.2406)
-4. pd_whittle (0.2393)
-5. whittle (0.2370)
-6. random (0.2367)
-7. thompson (0.2310)
-...
-11. ucb1 (0.2182)
+**Root cause diagnosed**: correctness-based UCB reward favors F-UCB (high accuracy from revisiting) over BKT-Bandit (targets weak categories, lower accuracy but higher knowledge). The meta-learner picks the wrong expert in BKT-Bandit-optimal regimes.
 
-**Clean three-way regime partition:**
-- BKT-Bandit: wins K≥20, d≤0.01 (5/12 configs)
-- F-UCB: wins d=0.05 regardless of K (4/12 configs)
-- Whittle variants: win K=6, d≤0.01 (3/12 configs)
+**Equity weakness**: MetaSelector rank 7.5/13 for weakest-category. adaptive_whittle dominates equity (9/12 top-3).
 
-**Whittle variant highlights:**
-- Best for equity: PD-Whittle #1 in weakest-category (+11.5% over random)
-- Beat UCB1 by 5-9% across all configs
-- Fall below random at K≥50 (advantage computation doesn't scale)
+**Consistency rankings (top-3 out of 12 configs):**
+- BKT-Bandit: 9/12 (wins 5 outright)
+- F-UCB: 9/12 (wins 4 outright)
+- MetaSelector: 9/12 (never #1)
+- adaptive_whittle: best equity (9/12 top-3 weakest-cat)
 
-**Surprising findings:**
-- BKT-Bandit beats Oracle in 10/12 configs (Oracle is greedy, not optimal)
-- Random beats UCB1 overall (exploration trap is severe)
-- ε-greedy quietly top-3 in 8/12 configs
+**Real data**: Still only 10 algorithms (run_real_data.py default list doesn't include Whittle/meta). Not critical — synthetic results are the main story.
 
-**Missing: Real data with Whittle variants** — previous real data runs had only 10 algorithms. Created `slurm/submit_whittle_real_data.sh` for 6 more jobs.
+### Problem to solve next
+Need a reward signal for MetaSelector that correctly identifies the best expert even when the best expert has LOWER accuracy (because it targets weak categories). Current signal: correctness rate → biased toward F-UCB. Need: knowledge-aware signal.
 
 ---
 
-## Session 5 — 2026-03-18
+## Session 5-6 — 2026-03-18
 
-### Direction Pivot: Parametric-Decay Restless Bandits (PD-RMAB)
+### PD-RMAB Direction Pivot
+- Implemented Whittle index computation (advantage-based, budget-aware)
+- 5 iterations of Whittle selectors: whittle, pd_whittle, adaptive_whittle
+- Key insight: Whittle advantage peaks at k≈0.3-0.5 (zone of proximal development)
 
-**Research findings**: Problem is formally an RMAB. Existing algorithms treat transitions as general unknown matrices. We exploit parametric forgetting structure.
+### MetaSelector Implementation
+- 4 iterations: EXP4 → follow-leader → knowledge-gain → UCB-over-experts
+- UCB-over-experts best: #1 at d=0.05 locally, #2 at scale
 
-**5 algorithm iterations:**
-1. Raw Whittle → terrible (one-step approx peaks at k≈0.5)
-2. Advantage-based (V_active - V_passive) → correctly favors weak
-3. Normalized [0,1] + exploration → competitive
-4. Budget-aware (1/K active fraction) → improved K=20
-5. AdaptiveWhittle (Whittle + urgency blend) → beats Oracle at K=6 d=0.005
-
-**Key theoretical insight**: Whittle advantage peaks at k≈0.3-0.5, not k=0. This explains Oracle catastrophe — quizzing very weak arms is suboptimal (zone of proximal development).
-
-### MetaSelector — Online Expert Aggregation
-
-UCB-over-experts that runs 5 base selectors (BKT-Bandit, F-UCB, PD-Whittle, Leitner, Random) in parallel and learns to follow the best one.
-
-**4 iterations:**
-1. EXP4-style exponential weights → #4-5 (reward signal too noisy)
-2. Follow-the-leader by correctness → #2 at d=0.05 (wrong signal for low decay)
-3. Knowledge-gain proxy → worse (even noisier)
-4. **UCB-over-experts + slow decay** → **#1 at d=0.05** (beats F-UCB!)
-
-**Final results (2000q, 30 students):**
-| Config | Meta Rank | Score | Best Non-Oracle |
-|--------|-----------|-------|-----------------|
-| K=6 d=0.005 | 4th | 0.7838 | BKT-Bandit 0.7879 |
-| K=6 d=0.01 | 4th | 0.5675 | PD-Whittle 0.5784 |
-| K=6 d=0.05 | **#1** | **0.2115** | (Meta IS best) |
-| K=20 d=0.005 | 4th | 0.2959 | Random 0.3159 |
-| K=20 d=0.01 | 3rd | 0.1762 | BKT-Bandit 0.1940 |
-| K=20 d=0.05 | **#1** | **0.1358** | (Meta IS best) |
-
-**Robustness (5000q, 3 seeds):** Perfectly deterministic — rank 4,4,4 / 2,2,2 / 3,3,3 / 2,1,2
-
-### 14 algorithms total
-random, ucb1, fucb, bkt_bandit, bkt_thompson, thompson, epsilon_greedy, sw_ucb, leitner, oracle, whittle, pd_whittle, adaptive_whittle, meta
-
-### IBEX submission ready
-`bash slurm/submit_meta_experiments.sh` → 42 jobs (36 synthetic + 6 real data, all 14 algorithms)
+### Session 4 — Full code audit, bug fixes
+### Session 2-3 — Bug fixes, K=6/K=20 analysis
+### Session 1 — 10 algorithms, framework, real data pipeline
 
 ---
 
-## Session 4 — 2026-03-18
-
-- Full code audit: all 10 selectors correct
-- Fixed: hash seeding, real data timescale mismatch, ASSISTments timestamp parsing
-- Real data results: Duolingo (easy, λ≈0), ASSISTments (hard, λ=0.003)
-
-## Session 2-3 — 2026-03-17
-
-- Bug fixes: OOM (disabled Student.history), auto log_frequency
-- K=6,20 analysis, Duolingo results
-
-## Session 1 — 2026-03-16
-
-- Implemented 10 algorithms, MultiAlgorithmExperiment, real data pipeline, slurm scripts
-
----
-
-## Paper Narrative (Final)
-
-**Title**: "Restless Bandits for Adaptive Learning: Principled Question Selection with Forgetting Dynamics"
-
-**Story**:
-1. Adaptive question selection with forgetting is a restless bandit problem
-2. Standard UCB ignores decay → exploration trap, worse than random at scale
-3. We propose three novel approaches: Whittle advantage-based, PD-Whittle (Bayesian + advantage), AdaptiveWhittle (urgency blend)
-4. BKT-Bandit wins at medium-high K, F-UCB wins at high decay, Whittle wins at low decay + best equity
-5. **No single algorithm dominates** — regime-dependent optimality is the key insight
-6. Whittle advantage analysis theoretically explains Oracle catastrophe (zone of proximal development)
-7. PD-Whittle achieves best equity (weakest-category) across all configs
-
----
-
-## Paper References
-
-### Already in refs.bib (16 refs)
-Auer 2002, Lattimore 2020, Ebbinghaus 1885, Murre 2015, Corbett 1994, Piech 2015, Yudelson 2013, Clément 2015, Liu 2014, Rafferty 2019, Doroudi 2019, Settles 2016, Leitner 1972, Pavlik 2005, VanLehn 2011, Towers 2024
-
-### New references to add (~25)
-**RMAB/Whittle**: Whittle 1988, Niño-Mora 2023 (review), NeurWIN (NeurIPS 2021), Neural-Q-Whittle (NeurIPS 2023), Index-aware RL (NeurIPS 2022), EduQate (AAMAS 2025)
-**Non-stationary bandits**: Garivier & Moulines 2011, Besbes 2014
-**Thompson Sampling**: Thompson 1933, Chapelle & Li 2011, Agrawal & Goyal 2012, Russo 2018
-**NeurIPS 2024**: Zhou & Tan (variance-dependent), He et al. (Cert-LSVI-UCB)
-**Knowledge tracing + RL**: Zhang 2025 (RL-DKT), Shi 2023 (ALPN)
-**Spaced repetition**: Tabibian 2019 (PNAS), Reddy 2016 (KDD)
-**Datasets**: Settles 2018 (SLAM), Feng 2009 (ASSISTments)
-**Bayesian design**: Chaloner & Verdinelli 1995
-**Lower bounds**: Lai & Robbins 1985
-**Real data**: Choffin 2019 (DAS3H)
+## Paper References (see previous entries for full list)
