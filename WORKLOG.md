@@ -63,10 +63,37 @@ reward = (1 - t/1000) * ΔK * 100 + (t/1000) * (accuracy - 0.5)
 - **Ch 11 EXP3**: Importance-weighted loss estimator is unbiased — need correct loss definition first
 - **Key**: Define loss as (1 - knowledge_improvement), not (1 - correctness), then apply EXP3
 
-### Next Ideas
-1. EXP3 with importance-weighted knowledge-improvement loss
-2. Tsallis-INF "best of both worlds" (Section 11.3)
-3. Direct BKT+F-UCB category scorer (skip expert tracking entirely)
+### MetaSelector v3: Unified Scoring (No Expert Tracking)
+
+**Key insight**: Stop tracking experts entirely. Fuse BKT-Bandit's posterior with F-UCB's three-term structure into a single category scorer. Experts only provide candidate filtering.
+
+**Audited against Orabona's textbook**: Valid UCB with non-stationary confidence width (§6.10 Optimistic OMD). Expert candidates reduce action set K→M (§6.8 LEA theory).
+
+**Formula**: `score = (1-mean)*exp(-λt) + 0.5*(1-exp(-λt)) + c*std`
+- Term 1: time-decayed weakness (old observations lose weight)
+- Term 2: additive forgetting urgency (like F-UCB)
+- Term 3: posterior uncertainty exploration (like BKT-Bandit)
+
+**Iterations to get here:**
+1. `(1-mean) + c*std*(1+λt)` — good at low decay, bad at high (urgency multiplied small std)
+2. `exp(λt)` urgency — #1 at K=6 d=0.01 but still bad at d=0.05
+3. Additive urgency — still too weak
+4. **F-UCB three-term structure** — top-3 in 5/6 configs!
+
+**Local results (30 students, 2000q):**
+| Config | Meta Rank | Gap |
+|--------|-----------|-----|
+| K=6 d=0.005 | **#3** | 0.0% |
+| K=6 d=0.01 | **#3** | 0.3% |
+| K=6 d=0.05 | **#3** | 27.6% |
+| K=20 d=0.005 | 4th | 7.2% |
+| K=20 d=0.01 | **#3** | 9.3% |
+| K=20 d=0.05 | **#3** | 12.6% |
+
+Avg rank 3.2, top-3 in 5/6. Best consistency yet.
+
+### IBEX submission ready
+`bash slurm/submit_meta_v3.sh` → 42 jobs
 
 ---
 
