@@ -1241,9 +1241,12 @@ class MetaSelector(BaseSelector):
         self.base_rewards = np.zeros(self.M)
         self._expert_counts = np.zeros(self.M)
         self._expert_correct = np.zeros(self.M)
-        self._expert_knowledge_gain = np.zeros(self.M)
+        self._expert_reward = np.zeros(self.M)  # cumulative ΔK reward
         self._chosen_expert = 0
-        self._prev_avg = 0.5
+
+        # Per-category EWMA knowledge estimate
+        self._category_knowledge = np.full(num_categories, 0.5)
+        self._ewma_alpha = 0.2
 
     def select_category(self) -> int:
         # Get recommendations from all base selectors
@@ -1255,16 +1258,24 @@ class MetaSelector(BaseSelector):
             self._chosen_expert = chosen
             return self._last_recommendations[chosen]
 
-        # Phase 2: UCB over experts using cumulative correctness rate
-        # Key insight: over long horizons, the expert that produces the
-        # highest knowledge also produces the highest CUMULATIVE correctness
-        # because more knowledgeable students answer more correctly.
+        # Phase 2: UCB over experts with blended reward signal
+        # Blend ΔK (knowledge gain) and correctness rate adaptively:
+        # - ΔK correctly credits experts targeting weak areas
+        # - Correctness captures long-run performance at high decay
+        # Blend weight shifts from ΔK-dominated to correctness-dominated over time
         scores = np.zeros(self.M)
         for i in range(self.M):
             n = self._expert_counts[i]
             if n > 0:
-                scores[i] = self._expert_correct[i] / n
-                # UCB exploration bonus
+                # Normalize both signals to comparable scales
+                dk_signal = self._expert_reward[i] / n * 100  # scale ΔK up
+                acc_signal = self._expert_correct[i] / n - 0.5  # center around 0
+
+                # Blend: early = more ΔK, late = more accuracy
+                t_frac = min(1.0, self.total_questions / 1000.0)
+                blended = (1 - t_frac) * dk_signal + t_frac * acc_signal
+
+                scores[i] = blended
                 scores[i] += math.sqrt(2 * math.log(self.total_questions + 1) / n)
             else:
                 scores[i] = float('inf')
@@ -1278,17 +1289,38 @@ class MetaSelector(BaseSelector):
         for b in self.bases:
             b.update(category, correct)
 
-        # Track performance of the expert we followed
         chosen = self._chosen_expert
+
+        # Compute knowledge BEFORE update
+        k_before = float(np.mean(self._category_knowledge))
+
+        # Update EWMA knowledge estimate for quizzed category
+        self._category_knowledge[category] = (
+            self._ewma_alpha * (1.0 if correct else 0.0)
+            + (1 - self._ewma_alpha) * self._category_knowledge[category]
+        )
+
+        # No forgetting decay on knowledge estimates — let EWMA handle staleness
+        # Decay was causing ΔK to be dominated by forgetting at high decay rates
+
+        # Compute knowledge AFTER update
+        k_after = float(np.mean(self._category_knowledge))
+
+        # Reward = knowledge gain (ΔK)
+        delta_k = k_after - k_before
+
+        # Accumulate ΔK reward for the chosen expert
+        self._expert_reward[chosen] += delta_k
         self._expert_counts[chosen] += 1
         if correct:
             self._expert_correct[chosen] += 1
         self.base_rewards[chosen] += (1.0 if correct else 0.0)
 
-        # Slow decay to favor recent performance while keeping history
+        # Slow decay on tracking counters
         decay = 0.9995
         self._expert_counts *= decay
         self._expert_correct *= decay
+        self._expert_reward *= decay
 
         self.attempts[category] += 1
         if correct:
@@ -1303,9 +1335,9 @@ class MetaSelector(BaseSelector):
         self.base_rewards = np.zeros(self.M)
         self._expert_counts = np.zeros(self.M)
         self._expert_correct = np.zeros(self.M)
-        self._expert_knowledge_gain = np.zeros(self.M)
+        self._expert_reward = np.zeros(self.M)
         self._chosen_expert = 0
-        self._prev_avg = 0.5
+        self._category_knowledge = np.full(self.num_categories, 0.5)
         for b in self.bases:
             b.reset()
 

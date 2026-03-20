@@ -46,8 +46,7 @@ def parse_args():
         "--algorithms", "-a",
         type=str,
         nargs="+",
-        default=["random", "ucb1", "fucb", "bkt_bandit", "bkt_thompson",
-                 "thompson", "epsilon_greedy", "sw_ucb", "leitner", "oracle"],
+        default=None,  # None = use all from registry
         help="Algorithms to evaluate",
     )
     parser.add_argument(
@@ -113,8 +112,11 @@ def main():
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
 
+    # Use all algorithms if none specified
+    algorithms = args.algorithms if args.algorithms else list(SELECTOR_REGISTRY.keys())
+
     # Validate algorithms
-    for algo in args.algorithms:
+    for algo in algorithms:
         if algo not in SELECTOR_REGISTRY:
             print(f"Error: Unknown algorithm '{algo}'. "
                   f"Available: {list(SELECTOR_REGISTRY.keys())}")
@@ -123,7 +125,7 @@ def main():
     run_real_data_experiment(
         dataset_name=args.dataset,
         data_dir=args.data_dir,
-        algorithms=args.algorithms,
+        algorithms=algorithms,
         output_dir=args.output_dir,
         max_students_fit=args.max_students_fit,
         max_students_replay=args.max_students_replay,
