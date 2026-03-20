@@ -4,27 +4,42 @@
 
 ### Full IBEX Results: 14 Algorithms (42 jobs, all succeeded)
 
-**MetaSelector at scale (100 students, 10K questions):**
+**MetaSelector v1 at scale (100 students, 10K questions):**
 - Top-3 in 9/12 configs (75%) — matches BKT-Bandit and F-UCB consistency
 - **Never wins #1** — always close second/third
 - Average gap to best: 4.7%
-- #2 at all d=0.05 configs (closely tracks F-UCB)
 - **Failure mode**: K=20 d=0.005 — rank 12th, 15% gap
 
-**Root cause diagnosed**: correctness-based UCB reward favors F-UCB (high accuracy from revisiting) over BKT-Bandit (targets weak categories, lower accuracy but higher knowledge). The meta-learner picks the wrong expert in BKT-Bandit-optimal regimes.
+**Root cause diagnosed**: correctness-based UCB reward favors F-UCB (high accuracy from revisiting) over BKT-Bandit (targets weak categories, lower accuracy but higher knowledge). Confirmed: Oracle has lowest accuracy (0.527) but highest knowledge (0.581).
 
-**Equity weakness**: MetaSelector rank 7.5/13 for weakest-category. adaptive_whittle dominates equity (9/12 top-3).
+### MetaSelector v2: Blended ΔK + Correctness Reward
 
-**Consistency rankings (top-3 out of 12 configs):**
-- BKT-Bandit: 9/12 (wins 5 outright)
-- F-UCB: 9/12 (wins 4 outright)
-- MetaSelector: 9/12 (never #1)
-- adaptive_whittle: best equity (9/12 top-3 weakest-cat)
+**Research**: Investigated off-policy evaluation, reward shaping, dueling bandits, Elo ratings, BKT observation models, EWMA knowledge estimation, CORRAL algorithm.
 
-**Real data**: Still only 10 algorithms (run_real_data.py default list doesn't include Whittle/meta). Not critical — synthetic results are the main story.
+**Solution**: EWMA-based per-category knowledge estimation. Reward = blend of ΔK (knowledge gain) and correctness, shifting from ΔK-dominated early to accuracy-dominated late:
+```
+reward = (1 - t/1000) * ΔK * 100 + (t/1000) * (accuracy - 0.5)
+```
 
-### Problem to solve next
-Need a reward signal for MetaSelector that correctly identifies the best expert even when the best expert has LOWER accuracy (because it targets weak categories). Current signal: correctness rate → biased toward F-UCB. Need: knowledge-aware signal.
+**4 iterations:**
+1. Pure ΔK → great at low decay (#2), terrible at high decay (33.7% gap)
+2. ΔK without forgetting decay → #1 at K=6 d=0.005, still bad at d=0.05
+3. Blended ΔK + correctness → **best of both worlds**
+4. Also fixed run_real_data.py to use all 14 algorithms from registry
+
+**MetaSelector v2 local results (30 students, 2000q):**
+| Config | Rank | Gap | vs v1 |
+|--------|------|-----|-------|
+| K=6 d=0.005 | 4th | 0.8% | same |
+| K=6 d=0.01 | 4th | 2.4% | same |
+| K=6 d=0.05 | **#1** | 0% | same |
+| K=20 d=0.005 | 4th | 4.6% | **was 12th!** |
+| K=20 d=0.01 | **3rd** | 6.7% | was 4th |
+| K=20 d=0.05 | **#2** | 1.1% | same |
+
+### IBEX run submitted
+`bash slurm/submit_meta_v2.sh` → 42 jobs (36 synthetic + 6 real data, all 14 algorithms)
+Waiting for results to validate at scale before further iteration.
 
 ---
 
