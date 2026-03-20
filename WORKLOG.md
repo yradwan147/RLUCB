@@ -37,9 +37,36 @@ reward = (1 - t/1000) * ΔK * 100 + (t/1000) * (accuracy - 0.5)
 | K=20 d=0.01 | **3rd** | 6.7% | was 4th |
 | K=20 d=0.05 | **#2** | 1.1% | same |
 
-### IBEX run submitted
-`bash slurm/submit_meta_v2.sh` → 42 jobs (36 synthetic + 6 real data, all 14 algorithms)
-Waiting for results to validate at scale before further iteration.
+### MetaSelector v2 IBEX Results (42 jobs, all succeeded)
+- 8/12 top-3 (was 9/12 in v1), never #1
+- Fixed K=20 d=0.005 failure but regressed K=6 d=0.01 to 8th
+- Reliably #2 at d=0.05 (<1% gap to F-UCB)
+- Equity: poor (rank ~8/14)
+
+### Reward Signal Iterations (6 attempts)
+1. Correctness rate (v1): biased toward F-UCB
+2. Blended ΔK + correctness (v2): helped high-decay, hurt low-decay
+3. Pure ΔK: noisy signal (all rewards ≈ -0.002, barely distinguishable)
+4. Tenure-based: too coarse (50-step blocks), rank 4 everywhere
+5. Category-scoring v3: recreates BKT-Bandit over expert candidates
+6. Category-scoring v4 + urgency: no improvement
+
+### Key Diagnosis from Trajectory Analysis
+- MetaSelector locks onto F-UCB early because F-UCB gets higher correctness
+- At K=20 d=0.005, meta tracks F-UCB (score 0.26) while BKT-Bandit is at 0.31
+- ΔK rewards are all ≈ -0.002 to +0.0002 — too small to distinguish experts
+- Correctness is INVERSELY correlated with knowledge-targeting at short timescales
+
+### Insights from Orabona's Online Learning Textbook (Ch 10-11)
+- **Ch 10.5**: Combining two OCO algorithms gives min(Regret_A, Regret_B) + O(1)
+- **Ch 10.6**: Reduction to LEA via coin-betting — parameter-free, optimal
+- **Ch 11 EXP3**: Importance-weighted loss estimator is unbiased — need correct loss definition first
+- **Key**: Define loss as (1 - knowledge_improvement), not (1 - correctness), then apply EXP3
+
+### Next Ideas
+1. EXP3 with importance-weighted knowledge-improvement loss
+2. Tsallis-INF "best of both worlds" (Section 11.3)
+3. Direct BKT+F-UCB category scorer (skip expert tracking entirely)
 
 ---
 
