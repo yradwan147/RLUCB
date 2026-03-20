@@ -1204,140 +1204,113 @@ class AdaptiveWhittleSelector(BaseSelector):
 
 class MetaSelector(BaseSelector):
     """
-    Online expert aggregation (EXP4-style) over base selectors.
+    Unified scoring meta-selector over base expert recommendations.
 
-    Runs M base selectors in parallel. Uses exponential weights to track
-    which base selector performs best and shifts weight toward it.
+    Runs M base selectors in parallel to generate candidate categories,
+    then scores each candidate using a unified formula that combines:
+    - BKT-Bandit's Beta posterior with forgetting (weakness + uncertainty)
+    - F-UCB's forgetting urgency (time-dependent exploration multiplier)
 
-    Guarantee: cumulative performance within O(sqrt(T log M)) of the
-    best base selector in hindsight.
+    Score: (1 - mean_i) + c * std_i * (1 + λ * t_i)
+
+    At low decay (λ→0): reduces to BKT-Bandit scoring.
+    At high decay (λ large): urgency dominates, similar to F-UCB.
+
+    Theoretically: UCB index with time-varying confidence width for
+    non-stationary arms (Garivier & Moulines 2011). Expert candidates
+    restrict action set from K to ≤M, reducing regret (Orabona §6.8).
     """
 
     def __init__(
         self,
         base_selectors: List[BaseSelector],
         num_categories: int,
-        learning_rate: float = 0.0,
+        decay_rate: float = 0.01,
+        exploration_param: float = 1.414,
         rng: Optional[np.random.Generator] = None,
     ):
         self.bases = base_selectors
         self.num_categories = num_categories
         self.M = len(base_selectors)
         self.rng = rng if rng is not None else np.random.default_rng()
+        self._decay_rate = decay_rate
+        self._exploration = exploration_param
 
-        # Exponential weights
-        self.weights = np.ones(self.M) / self.M
+        # Per-category Beta posterior
+        self._alpha = np.ones(num_categories)
+        self._beta = np.ones(num_categories)
+        self._time_since = np.zeros(num_categories, dtype=np.int32)
 
-        # Auto learning rate if not specified: sqrt(ln(M) / T_est)
-        self.eta = learning_rate if learning_rate > 0 else 0.1
-
-        # Track state
+        # Standard tracking
         self.attempts = np.zeros(num_categories, dtype=np.int32)
         self.correct = np.zeros(num_categories, dtype=np.int32)
         self.total_questions = 0
-        self._last_recommendations: List[int] = []
-
-        # Track per-base cumulative reward for diagnostics
-        self.base_rewards = np.zeros(self.M)
-        self._expert_counts = np.zeros(self.M)
-        self._expert_correct = np.zeros(self.M)
-        self._expert_reward = np.zeros(self.M)  # cumulative ΔK reward
-        self._chosen_expert = 0
-
-        # Per-category EWMA knowledge estimate
-        self._category_knowledge = np.full(num_categories, 0.5)
-        self._ewma_alpha = 0.2
 
     def select_category(self) -> int:
-        # Get recommendations from all base selectors
-        self._last_recommendations = [b.select_category() for b in self.bases]
+        # Get recommendations from all base experts
+        recs = [b.select_category() for b in self.bases]
 
-        # Phase 1: Extended round-robin warm-up
-        if self.total_questions < self.M * 20:
-            chosen = self.total_questions % self.M
-            self._chosen_expert = chosen
-            return self._last_recommendations[chosen]
+        # Explore each category once first
+        for i in range(self.num_categories):
+            if self.attempts[i] == 0:
+                return i
 
-        # Phase 2: UCB over experts with blended reward signal
-        # Blend ΔK (knowledge gain) and correctness rate adaptively:
-        # - ΔK correctly credits experts targeting weak areas
-        # - Correctness captures long-run performance at high decay
-        # Blend weight shifts from ΔK-dominated to correctness-dominated over time
-        scores = np.zeros(self.M)
-        for i in range(self.M):
-            n = self._expert_counts[i]
-            if n > 0:
-                # Normalize both signals to comparable scales
-                dk_signal = self._expert_reward[i] / n * 100  # scale ΔK up
-                acc_signal = self._expert_correct[i] / n - 0.5  # center around 0
+        # Apply posterior forgetting
+        for i in range(self.num_categories):
+            if self._time_since[i] > 0:
+                d = math.exp(-self._decay_rate * self._time_since[i])
+                self._alpha[i] = 1.0 + (self._alpha[i] - 1.0) * d
+                self._beta[i] = 1.0 + (self._beta[i] - 1.0) * d
 
-                # Blend: early = more ΔK, late = more accuracy
-                t_frac = min(1.0, self.total_questions / 1000.0)
-                blended = (1 - t_frac) * dk_signal + t_frac * acc_signal
+        # Score expert-recommended categories with unified formula
+        candidates = list(set(recs))
+        best_score = -float('inf')
+        best_cat = candidates[0]
 
-                scores[i] = blended
-                scores[i] += math.sqrt(2 * math.log(self.total_questions + 1) / n)
-            else:
-                scores[i] = float('inf')
+        for cat in candidates:
+            a, b = self._alpha[cat], self._beta[cat]
+            mean_k = a / (a + b)
+            std = math.sqrt(a * b / ((a + b) ** 2 * (a + b + 1)))
+            t = self._time_since[cat]
 
-        best_expert = int(np.argmax(scores))
-        self._chosen_expert = best_expert
-        return self._last_recommendations[best_expert]
+            # Unified three-term score (F-UCB structure + BKT posterior):
+            # 1. Time-decayed weakness (old observations lose weight)
+            # 2. Forgetting urgency (additive, grows with time)
+            # 3. Posterior uncertainty (exploration)
+            decay_t = math.exp(-self._decay_rate * t)
+            weakness = (1 - mean_k) * decay_t
+            urgency = 0.5 * (1 - decay_t)
+            exploration = self._exploration * std
+            score = weakness + urgency + exploration
+
+            if score > best_score:
+                best_score = score
+                best_cat = cat
+
+        return best_cat
 
     def update(self, category: int, correct: bool) -> None:
-        # Update ALL base selectors
         for b in self.bases:
             b.update(category, correct)
 
-        chosen = self._chosen_expert
-
-        # Compute knowledge BEFORE update
-        k_before = float(np.mean(self._category_knowledge))
-
-        # Update EWMA knowledge estimate for quizzed category
-        self._category_knowledge[category] = (
-            self._ewma_alpha * (1.0 if correct else 0.0)
-            + (1 - self._ewma_alpha) * self._category_knowledge[category]
-        )
-
-        # No forgetting decay on knowledge estimates — let EWMA handle staleness
-        # Decay was causing ΔK to be dominated by forgetting at high decay rates
-
-        # Compute knowledge AFTER update
-        k_after = float(np.mean(self._category_knowledge))
-
-        # Reward = knowledge gain (ΔK)
-        delta_k = k_after - k_before
-
-        # Accumulate ΔK reward for the chosen expert
-        self._expert_reward[chosen] += delta_k
-        self._expert_counts[chosen] += 1
         if correct:
-            self._expert_correct[chosen] += 1
-        self.base_rewards[chosen] += (1.0 if correct else 0.0)
-
-        # Slow decay on tracking counters
-        decay = 0.9995
-        self._expert_counts *= decay
-        self._expert_correct *= decay
-        self._expert_reward *= decay
+            self._alpha[category] += 1
+            self.correct[category] += 1
+        else:
+            self._beta[category] += 1
 
         self.attempts[category] += 1
-        if correct:
-            self.correct[category] += 1
         self.total_questions += 1
+        self._time_since += 1
+        self._time_since[category] = 0
 
     def reset(self) -> None:
-        self.weights = np.ones(self.M) / self.M
+        self._alpha = np.ones(self.num_categories)
+        self._beta = np.ones(self.num_categories)
+        self._time_since = np.zeros(self.num_categories, dtype=np.int32)
         self.attempts = np.zeros(self.num_categories, dtype=np.int32)
         self.correct = np.zeros(self.num_categories, dtype=np.int32)
         self.total_questions = 0
-        self.base_rewards = np.zeros(self.M)
-        self._expert_counts = np.zeros(self.M)
-        self._expert_correct = np.zeros(self.M)
-        self._expert_reward = np.zeros(self.M)
-        self._chosen_expert = 0
-        self._category_knowledge = np.full(self.num_categories, 0.5)
         for b in self.bases:
             b.reset()
 
@@ -1354,10 +1327,6 @@ class MetaSelector(BaseSelector):
 
     def get_exposure_distribution(self) -> np.ndarray:
         return self.attempts.copy()
-
-    def get_weights(self) -> np.ndarray:
-        """Return current expert weights (for diagnostics)."""
-        return self.weights.copy()
 
 
 # Registry mapping algorithm names to selector factory functions
@@ -1408,6 +1377,8 @@ SELECTOR_REGISTRY = {
             create_selector("random", cfg, np.random.default_rng(46)),
         ],
         num_categories=cfg.num_categories,
+        decay_rate=cfg.decay_rate,
+        exploration_param=cfg.exploration_param,
         rng=rng,
     ),
     "whittle": lambda cfg, rng: WhittleIndexSelector(
