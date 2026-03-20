@@ -92,8 +92,21 @@ reward = (1 - t/1000) * ΔK * 100 + (t/1000) * (accuracy - 0.5)
 
 Avg rank 3.2, top-3 in 5/6. Best consistency yet.
 
+### Real Data Results (v2, all 14 algorithms)
+- **Duolingo**: meta 6th (0.619), top is leitner/ucb1 (0.631). Margins tiny.
+- **ASSISTments**: meta 5th (0.503), top is whittle (0.504). Margins <0.1%.
+- Whittle variants do well on ASSISTments (1st, 3rd, 4th)
+- adaptive_whittle best equity on ASSISTments (weakest=0.462)
+- Real data differences are very small — all algorithms converge to similar values
+
 ### IBEX submission ready
 `bash slurm/submit_meta_v3.sh` → 42 jobs
+
+### What's next (after IBEX results)
+- Analyze v3 at scale — does top-3 in 5/6 hold?
+- If yes: finalize algorithm set, generate publication figures
+- Theory: prove regret bound for unified scoring formula
+- Paper writing (last)
 
 ---
 
