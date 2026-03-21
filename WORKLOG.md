@@ -102,11 +102,53 @@ Avg rank 3.2, top-3 in 5/6. Best consistency yet.
 ### IBEX submission ready
 `bash slurm/submit_meta_v3.sh` → 42 jobs
 
-### What's next (after IBEX results)
-- Analyze v3 at scale — does top-3 in 5/6 hold?
-- If yes: finalize algorithm set, generate publication figures
-- Theory: prove regret bound for unified scoring formula
-- Paper writing (last)
+### MetaSelector v3 IBEX Results (42 jobs, all succeeded)
+
+**First ever #1 win**: K=6 d=0.01 (0.5819, beats all including Oracle)
+
+**Rankings by config (avg across 3 seeds):**
+| Config | Rank | Gap | Note |
+|--------|------|-----|------|
+| K=6 d=0.005 | 4th | 0.5% | |
+| K=6 d=0.01 | **#1** | 0% | **First win!** |
+| K=6 d=0.05 | 5th | 25% | F-UCB still dominates |
+| K=20 d=0.005 | 10th | 5% | Persistent failure mode |
+| K=20 d=0.01 | 5th | 11% | |
+| K=20 d=0.05 | 5th | 13% | |
+| K=50 d=0.005 | **3rd** | 12% | |
+| K=50 d=0.01 | **3rd** | 7% | |
+| K=50 d=0.05 | **3rd** | 6% | |
+| K=100 d=0.005 | **3rd** | 9% | |
+| K=100 d=0.01 | **3rd** | 4% | |
+| K=100 d=0.05 | **3rd** | 3% | |
+
+**Consistency: top-5 in 11/12, top-3 in 7/12, avg rank 4.0**
+**Remarkably stable at K≥50: rank 3 in all 6 configs**
+
+**Version comparison:**
+| Metric | v1 | v2 | v3 |
+|--------|:--:|:--:|:--:|
+| Top-3 | 9/12 | 8/12 | 7/12 |
+| #1 wins | 0 | 0 | **1** |
+| Top-5 | - | - | **11/12** |
+| Avg rank | ~4.2 | ~4.5 | **4.0** |
+| Worst | 12th | 8th | 10th |
+
+**Real data (v3):**
+- Duolingo: meta 11th (0.600 vs top 0.631) — below random
+- ASSISTments: meta 12th (0.497 vs top 0.504) — below random
+- Real data margins tiny; meta-learning overhead hurts
+
+**Leaderboard (top-3 consistency across 12 synthetic configs):**
+1. bkt_bandit: 10/12 top-3, 5 wins
+2. fucb: 9/12 top-3, 4 wins
+3. meta: 7/12 top-3, 1 win
+4. adaptive_whittle: 2/12 top-3, 2 wins
+
+### What's next
+- Theory: prove regret bounds for unified scoring formula
+- Publication figures: knowledge trajectories, regime heatmaps, scaling plots
+- Paper writing
 
 ---
 
