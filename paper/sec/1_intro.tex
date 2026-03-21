@@ -2,32 +2,40 @@
 \label{sec:intro}
 \vspace{-1mm}
 
-Personalized learning has emerged as a central goal of modern educational technology, driven by the recognition that students learn at different rates and have heterogeneous knowledge profiles across topics~\cite{vanlehn2011relative,corbett1994knowledge,anderson2014engaged}.
-Intelligent tutoring systems (ITS) have long sought to adapt instructional content to individual learners~\cite{anderson1985intelligent,vanlehn2006behavior}, yet the question of \emph{which topic to quiz next} remains a fundamental challenge in adaptive learning.
-In most educational platforms, questions are either selected uniformly at random or follow a fixed curriculum sequence, neither of which accounts for a student's evolving strengths and weaknesses~\cite{doroudi2019where}.
-This inefficiency is particularly costly when study time is limited: a student preparing for an exam with constrained practice time needs questions that target their weakest areas, not topics they have already mastered.
-The core challenge is to balance \emph{exploitation}---focusing on known weak areas---with \emph{exploration}---probing less-tested topics to discover hidden gaps.
+Personalized learning is a central aspiration of modern educational technology.
+Students differ in prior knowledge, learning speed, and retention capacity, yet most practice platforms assign questions uniformly or via fixed curricula that ignore individual knowledge trajectories~\citep{vanlehn2011relative,doroudi2019where}.
+A deeper challenge is that human memory is inherently \emph{non-stationary}: knowledge of unpracticed topics decays over time following well-established forgetting curves~\citep{ebbinghaus1885memory,murre2015replication}.
+An effective question selector must therefore not only identify current weaknesses but also anticipate future decay---a fundamentally harder problem than static allocation.
+The question \emph{``which topic should we quiz next?''} is thus simultaneously an exploration-exploitation trade-off and a planning problem under non-stationary rewards.
 
-This exploration-exploitation trade-off is precisely the problem addressed by multi-armed bandit (MAB) algorithms~\cite{auer2002finite,lattimore2020bandit}.
-In the MAB framework, an agent repeatedly selects among $K$ arms (actions) to maximize cumulative reward, balancing the desire to exploit the best-known arm against the need to explore uncertain alternatives.
-The Upper Confidence Bound (UCB1) algorithm~\cite{auer2002finite} provides an elegant solution with provably optimal regret bounds.
-Despite the natural correspondence between bandit problems and adaptive question selection---where each knowledge category is an ``arm'' and the reward signal reflects learning need---surprisingly little work has applied UCB directly to educational quizzing with explicit modeling of learning and forgetting dynamics~\cite{clement2015multi,liu2014trading}.
-Existing approaches either focus on item response theory without temporal dynamics or employ complex reinforcement learning methods that lack the interpretability of bandit solutions.
+Existing approaches to adaptive question selection draw on multi-armed bandits (MAB)~\citep{auer2002finite,clement2015multi}, Thompson Sampling~\citep{thompson1933likelihood,rafferty2019statistical}, and spaced repetition heuristics such as Leitner boxes~\citep{leitner1972so}.
+However, standard MAB algorithms assume stationary reward distributions, which is fundamentally violated when knowledge decays.
+Sliding-window~\citep{garivier2011upper} and discounted UCB variants partially address non-stationarity but do not model the \emph{structure} of forgetting.
+Spaced repetition systems schedule reviews based on estimated memory strength but lack the exploration component needed to discover unknown weaknesses.
+Knowledge tracing models~\citep{corbett1994knowledge,piech2015deep} provide sophisticated student models but typically pair them with greedy or heuristic selection policies without formal exploration guarantees.
 
-We introduce \textbf{\ours}, an adaptive question selection strategy that applies UCB1 to dynamically choose which knowledge category to quiz a student on next.
-The key insight is to invert the standard UCB objective: instead of maximizing reward (correctness), \ours maximizes a \emph{weakness score} $(1 - r_i)$ plus an exploration bonus, thereby prioritizing categories where the student performs poorly while maintaining coverage of under-tested topics.
-We evaluate \ours in a controlled simulation environment with \textbf{\numstudents} students per group, \textbf{\numcategories} knowledge categories, and \textbf{\numquestions} questions per session, incorporating realistic learning dynamics (asymptotic knowledge gain) and Ebbinghaus-inspired exponential forgetting~\cite{ebbinghaus1885memory,murre2015replication}.
-We analyze results across three temporal phases:
-\textbf{(1) Short-term} ($t \leq 500$): initial learning and exploration.
-\textbf{(2) Mid-term} ($500 < t \leq 2{,}000$): knowledge consolidation.
-\textbf{(3) Long-term} ($t > 2{,}000$): saturation and convergence.
+\begin{wrapfigure}{r}{0.42\textwidth}
+  \centering
+  \vspace{-4mm}
+  \vspace{-\intextsep}
+  \includegraphics[width=0.40\textwidth]{fig_teaser.png}
+  \caption{Knowledge trajectories at $K\!=\!6$, $\lambda\!=\!0.01$. MetaSelector achieves the highest final knowledge among non-oracle methods.}
+  \label{fig:teaser}
+  \vspace{-4mm}
+\end{wrapfigure}
 
-Our experiments reveal that \ours provides dramatic advantages in time-constrained settings: at $t{=}100$, the weakest knowledge category under \ours is $\mathbf{60.7\%}$ higher than under random selection, and this advantage persists at $\mathbf{36.8\%}$ at $t{=}500$ (\cref{tab:weakest}).
-UCB leads in overall knowledge by $\mathbf{+3.9\%}$ at $t{=}500$ and dominates weakest-category performance for $\mathbf{53.5\%}$ of all timesteps.
-However, given sufficient practice (${\sim}$10,000 questions), random selection converges to comparable overall knowledge levels, confirming that \ours's value lies in \emph{efficiency}---reaching good performance faster---rather than raising the ultimate knowledge ceiling.
+We present \textbf{\ours}, a comprehensive framework and benchmark for adaptive question selection under forgetting.
+We formalize the problem as a \emph{restless multi-armed bandit} (RMAB)~\citep{whittle1988restless}, where each knowledge topic is an arm whose state evolves even when not selected (due to forgetting).
+Within this formulation, we develop four novel algorithms: \textbf{F-UCB}, which integrates decay-aware urgency into the UCB exploration bonus; \textbf{BKT-Bandit}, which maintains Bayesian posteriors over knowledge with integrated forgetting dynamics; \textbf{Whittle-advantage}, which computes restless bandit indices via MDP value differences; and \textbf{MetaSelector}, a UCB-over-experts meta-algorithm that selects among base selectors online, enabling principled regime interpolation.
 
-In summary, the contributions of this paper include:
-(1) \textbf{UCB-based adaptive question selection}: We formulate educational question selection as a multi-armed bandit problem and apply UCB1 with an inverted reward signal to prioritize weak knowledge areas.
-(2) \textbf{Realistic student simulation}: We develop a simulation framework with asymptotic learning dynamics and Ebbinghaus-inspired forgetting, implemented as a Gymnasium~\cite{towers2024gymnasium} reinforcement learning environment.
-(3) \textbf{Comprehensive empirical analysis}: We conduct a controlled experiment with 100 students per group over 10,000 questions, analyzing performance across three temporal phases with multiple metrics.
-(4) \textbf{Open-source framework}: We release the complete simulation code, experiment runner, and visualization tools to facilitate further research in bandit-based adaptive education.
+Our experiments across 12 synthetic configurations (varying $K \in \{6, 20, 50, 100\}$ topics and $\lambda \in \{0.005, 0.01, 0.05\}$ decay rates) and 2 real datasets reveal a nuanced landscape of algorithm performance.
+No single algorithm dominates all regimes: BKT-Bandit achieves top-3 in 10/12 configurations with average rank 2.50, while F-UCB delivers the largest gains ($+41.8\%$ over random) at high decay.
+Most strikingly, we discover an \emph{Oracle catastrophe}: a clairvoyant selector with perfect knowledge of the current state finishes last in 9/12 configurations, losing to random selection in 10/12, because greedy exploitation of known states systematically neglects decaying arms.
+
+In summary, our contributions are:
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item \textbf{RMAB formulation.} We formalize educational quizzing as a restless multi-armed bandit with Ebbinghaus forgetting, providing a principled framework that exposes why stationary methods fail.
+  \item \textbf{Four novel algorithms.} We introduce F-UCB, BKT-Bandit, Whittle-advantage, and MetaSelector, each targeting different aspects of the forgetting-aware selection problem.
+  \item \textbf{Oracle catastrophe.} We identify and analyze a counterintuitive failure mode: perfect state information leads to worse performance than random selection due to systematic neglect of forgetting dynamics.
+  \item \textbf{Comprehensive benchmark.} We evaluate 14 algorithms across 12 synthetic configurations and 2 real datasets (Duolingo: 500 students, 127K interactions; ASSISTments: 500 students, 425K interactions), providing the most extensive comparison of bandit-based question selectors to date.
+\end{enumerate}

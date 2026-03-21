@@ -1,105 +1,137 @@
 \section{Experiments}
 \label{sec:experiments}
 
-We evaluate \ours against random selection across four dimensions: overall knowledge acquisition (\cref{sec:overall}), weakest-category protection (\cref{sec:weakest}), phase-level analysis (\cref{sec:phases}), and category-level behavior (\cref{sec:category}).
+We evaluate 14 algorithms across 12 synthetic configurations and 2 real datasets, examining performance across regimes defined by topic count~$K$ and decay rate~$\lambda$.
 
-\subsection{Overall Knowledge Acquisition}
-\label{sec:overall}
-\vspace{-1mm}
+\subsection{Experimental Setup}
+\label{sec:setup}
 
-\begin{wraptable}[15]{r}{0.52\textwidth}
-  \centering
-  \vspace{-5mm}
-  \caption{Average knowledge at key timesteps. Bold indicates superior performance.}
-  \input{tables/overall}
-  \label{tab:overall}
-\end{wraptable}
+\paragraph{Synthetic environment.}
+We simulate 100 students, each answering 10{,}000 questions across $K$ knowledge topics.
+We vary $K \in \{6, 20, 50, 100\}$ and $\lambda \in \{0.005, 0.01, 0.05\}$, yielding 12 configurations.
+Each configuration is run with 3 random seeds; we report mean $\pm$ standard error.
+Student model parameters are $\alpha = 0.12$, $\beta = 0.02$, $k_{\mathrm{base}} = 0.10$, and $c = \sqrt{2} \approx 1.414$.
+The evaluation metric is \textbf{final mean knowledge} $\bar{k}^{(T)} = \frac{1}{K}\sum_{i=1}^{K} k_i^{(T)}$, averaged across students and seeds.
 
-\cref{tab:overall} reports the mean knowledge across all students and categories at selected timesteps.
-UCB achieves higher average knowledge during the short-to-mid term, peaking at $\mathbf{+3.9\%}$ advantage at $t{=}500$.
-The crossover occurs around $t{=}2{,}500$: beyond this point, random selection achieves marginally higher overall knowledge.
+\paragraph{Algorithms.}
+We compare 14 algorithms: Random, UCB1, Thompson Sampling, $\varepsilon$-Greedy, SW-UCB, Leitner, Oracle, F-UCB, BKT-Bandit, PD-Whittle, Adapt-Whittle, Whittle (basic), MetaSelector, and a Decay-UCB variant.
 
-\noindent\textbf{Results}: UCB's initial disadvantage at $t{=}100$ ($-7.6\%$) reflects its aggressive exploration of weak categories, which temporarily sacrifices overall accuracy.
-By $t{=}500$, this investment pays off as UCB surpasses random in overall knowledge.
-The peak advantage of $\mathbf{+2.3\%}$ occurs at $t \approx 470$.
-UCB leads in overall knowledge for $21.2\%$ of all timesteps, concentrated in the first 2,000 questions.
-Given sufficient practice (${\sim}$10,000 questions), random selection converges to $0.562$ average knowledge compared to UCB's $0.536$, a reversal of $-4.6\%$.
-This convergence is expected: with ${\sim}$1,667 questions per category under random allocation, even uniform coverage provides adequate practice for all topics.
+\subsection{Main Results: $K{=}6$}
+\label{sec:main_results}
 
-\subsection{Weakest Category Protection}
-\label{sec:weakest}
-\vspace{-1mm}
+\Cref{tab:main} reports final mean knowledge for all algorithms at $K{=}6$ across three decay rates.
 
-\begin{figure}[!t]
-    \centering
-    \includegraphics[width=1\linewidth]{figs/fig2_weakest_category.png}
-    \caption{Weakest category knowledge over time. \ours (green) provides dramatically faster improvement in a student's worst-performing category, with the advantage most pronounced in the first 1,000 questions.}
-    \label{fig:weakest}
-\end{figure}
-
-The most striking advantage of \ours is in \textbf{weakest-category protection}---the knowledge level in each student's lowest-performing category.
-\cref{tab:weakest} reports these results, and \cref{fig:weakest} visualizes the full trajectory.
-
-\begin{table}[!t]
-\caption{Weakest category knowledge at key timesteps. \ours achieves up to $\mathbf{60.7\%}$ higher performance in students' weakest areas during the short term.}
-\input{tables/weakest}
-\vspace{-2mm}
-\label{tab:weakest}
+\begin{table}[t]
+\centering
+\caption{Final mean knowledge at $K{=}6$ for all algorithms across three decay rates $\lambda$.
+Bold indicates the best result; underline indicates second-best.
+Results averaged over 100 students and 3 seeds.}
+\label{tab:main}
+\input{tables/table_main_results}
 \end{table}
 
-\noindent\textbf{Results}: At $t{=}100$, the weakest category under UCB has knowledge $0.207$ compared to $0.129$ under random---a $\mathbf{60.7\%}$ advantage.
-This gap narrows over time but remains substantial: $+56.7\%$ at $t{=}250$, $+36.8\%$ at $t{=}500$, and $+25.2\%$ at $t{=}1{,}000$.
-UCB leads in weakest-category performance for $\mathbf{53.5\%}$ of all timesteps.
-The advantage erodes after $t{=}5{,}000$ as random selection eventually provides enough practice to raise all categories.
-At $t{=}10{,}000$, random slightly leads ($-8.2\%$), reflecting UCB's tendency to create temporary imbalances during extended practice.
+At low decay ($\lambda{=}0.005$), the problem is easy and most algorithms cluster near $\bar{k} \approx 0.785$.
+Oracle achieves the best score (0.790), but its advantage is marginal.
+At moderate decay ($\lambda{=}0.01$), differences emerge: Oracle still leads (0.584), but MetaSelector (0.582) and PD-Whittle (0.582) are within one standard error.
+BKT-Bandit (0.581) and basic Whittle (0.580) closely follow.
 
-\subsection{Phase Analysis}
-\label{sec:phases}
-\vspace{-1mm}
+The picture changes dramatically at high decay ($\lambda{=}0.05$): \textbf{F-UCB dominates} with $\bar{k} = 0.211$, a $+41.6\%$ improvement over Random (0.149).
+SW-UCB (0.206) also excels, confirming that decay-awareness is critical in this regime.
+Crucially, \textbf{Oracle collapses} to 0.122, finishing \emph{below Random}---the Oracle catastrophe.
 
-\begin{wraptable}[11]{r}{0.55\textwidth}
+\subsection{Scaling Analysis}
+\label{sec:scaling}
+
+\begin{table}[t]
+\centering
+\caption{Scaling behavior at $\lambda{=}0.01$ across $K \in \{6, 20, 50, 100\}$ for the top algorithms.}
+\label{tab:scaling}
+\input{tables/table_scaling}
+\end{table}
+
+\Cref{tab:scaling} shows how algorithms scale as the number of topics increases from $K{=}6$ to $K{=}100$ at fixed $\lambda{=}0.01$.
+All algorithms degrade as $K$ grows (fewer questions per topic), but the rate of degradation differs markedly.
+BKT-Bandit maintains the strongest relative performance across all scales, while Oracle's disadvantage grows with $K$.
+
+\begin{figure}[t]
   \centering
-  \vspace{-5mm}
-  \caption{Performance comparison by temporal phase.}
-  \input{tables/phases}
-  \label{tab:phases}
-\end{wraptable}
-
-\cref{tab:phases} summarizes performance by temporal phase.
-\ours clearly dominates in the short-term and mid-term phases, providing both higher overall knowledge and dramatically better weakest-category protection.
-In the long-term, random selection gains a small edge as both strategies saturate.
-
-The phase analysis reveals a key insight: \emph{\ours's value lies in learning efficiency, not ultimate performance ceiling}.
-Both strategies reach similar knowledge levels (${\sim}$0.55--0.59), but UCB reaches this level in approximately 500--1,000 questions compared to 2,000--3,000 for random selection.
-For practical educational settings where study time is limited, this $3{\times}$ efficiency gain is substantial.
-
-\subsection{Category-Level Analysis}
-\label{sec:category}
-\vspace{-1mm}
-
-\begin{figure}[!t]
-    \centering
-    \includegraphics[width=1\linewidth]{figs/fig4_category_heatmaps.png}
-    \caption{Per-category knowledge evolution over time. UCB (left) produces more uniform knowledge across categories, while Random (right) shows greater inter-category variance, particularly in the early phases.}
-    \label{fig:heatmaps}
+  \includegraphics[width=0.9\textwidth]{fig_scaling.png}
+  \caption{Scaling behavior at $\lambda{=}0.01$: final mean knowledge decreases as $K$ grows. BKT-Bandit (green) maintains the strongest relative performance; Oracle (orange) degrades fastest.}
+  \label{fig:scaling}
 \end{figure}
 
-\cref{fig:heatmaps} shows per-category knowledge heatmaps for both groups.
-UCB produces visibly more uniform coloring across categories, indicating balanced learning.
-Random selection shows higher inter-category variance early on, with some categories advancing much faster than others.
+\subsection{The Oracle Catastrophe}
+\label{sec:oracle}
 
-\begin{figure}[!t]
-    \centering
-    \includegraphics[width=1\linewidth]{figs/fig5_exposure_distribution.png}
-    \caption{Cumulative exposure distribution across categories. Both strategies converge to roughly equal exposure by $t{=}10{,}000$; the key difference is \emph{timing}---UCB front-loads exposure to weak categories.}
-    \label{fig:exposure}
+The most striking finding is that Oracle---a clairvoyant selector with perfect knowledge of the current state---\textbf{loses to Random in 10 out of 12 configurations} and finishes last in 9/12.
+This counterintuitive result arises because Oracle's greedy policy $i^* = \argmin_i k_i^{(t)}$ creates a destructive feedback loop:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+    \item Oracle identifies the weakest topic and quizzes it, raising its knowledge.
+    \item Meanwhile, all other $K{-}1$ topics decay unobserved.
+    \item At the next step, a different topic is now weakest (due to decay), so Oracle switches.
+    \item This ``chasing'' behavior means no topic receives sustained practice, preventing consolidation.
+\end{enumerate}
+
+The catastrophe is \emph{worse} at higher $K$ (more arms decay per step) and higher $\lambda$ (faster decay).
+At $K{=}6$, $\lambda{=}0.05$, Oracle achieves only $0.122$ versus Random's $0.149$---an $18.1\%$ deficit.
+This finding demonstrates that \emph{perfect state information is insufficient} for effective selection under forgetting; what matters is the ability to anticipate and counteract future decay.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{fig_oracle_catastrophe.png}
+  \caption{Oracle catastrophe: Oracle's rank out of 14 algorithms across all 12 configurations. Red bars indicate last-place finishes. Oracle finishes last in 9/12 and loses to Random in 10/12.}
+  \label{fig:oracle_catastrophe}
 \end{figure}
 
-\cref{fig:exposure} shows the exposure distribution.
-Both groups end with roughly equal exposure per category after 10,000 questions, confirming that UCB's advantage comes not from different total allocation but from \emph{temporal reordering}---front-loading exposure to categories that need it most.
-This front-loading creates an implicit spaced repetition effect: weak categories receive early intensive practice, then natural forgetting dynamics and UCB's exploration bonus ensure periodic revisitation.
+\subsection{Regime Analysis}
+\label{sec:regime}
 
-\noindent\textbf{Final Category Statistics.}
-At termination ($t{=}10{,}000$), UCB shows a knowledge range of $0.411$ (min $0.358$, max $0.769$) compared to Random's range of $0.320$ (min $0.390$, max $0.710$).
-Paradoxically, random selection achieves lower final variance (std $0.123$) than UCB (std $0.166$).
-This occurs because UCB's aggressive early focus on weak categories creates temporary imbalances that persist into the long-term phase, while random selection's uniform allocation naturally produces more uniform final knowledge.
+Different algorithms dominate in different $(K, \lambda)$ regimes:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+    \item \textbf{Low decay ($\lambda{=}0.005$):} Forgetting is mild; Adapt-Whittle and Oracle perform well. Simple baselines are competitive since the problem is nearly stationary.
+    \item \textbf{Moderate decay ($\lambda{=}0.01$):} BKT-Bandit and PD-Whittle excel. Bayesian tracking of uncertainty provides an edge.
+    \item \textbf{High decay ($\lambda{=}0.05$):} F-UCB and SW-UCB dominate. Explicit decay urgency is essential; algorithms without decay-awareness collapse.
+    \item \textbf{Large $K$ ($K{\geq}50$):} MetaSelector stabilizes at rank~3 and achieves top-5 in 11/12 configurations. Its regime interpolation automatically favors the best expert.
+\end{itemize}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\textwidth]{fig_regime_heatmap.png}
+  \caption{Winner heatmap across $(K, \lambda)$ configurations. F-UCB (red) sweeps all $\lambda{=}0.05$ configs; BKT-Bandit (green) dominates at $K{\geq}50$. No single algorithm wins everywhere.}
+  \label{fig:regime}
+\end{figure}
+
+\subsection{Real Data Validation}
+\label{sec:real_data}
+
+We validate on two real educational datasets.
+
+\paragraph{Duolingo.}
+We sample 500 students from the Duolingo English learner dataset~\citep{settles2016trainable}, totaling 127K interactions.
+We fit student model parameters via maximum likelihood: $\alpha{=}0.126$, $\beta{=}0.087$, $\lambda{\approx}0$, $k_0{=}0.91$.
+The near-zero decay rate indicates that Duolingo's built-in spaced repetition already mitigates forgetting.
+
+\paragraph{ASSISTments.}
+We sample 500 students from ASSISTments~\citep{feng2009addressing}, totaling 425K interactions.
+Fitted parameters: $\alpha{=}0.090$, $\beta{=}0.077$, $\lambda{=}0.008$, $k_0{=}0.71$.
+Non-trivial decay ($\lambda{=}0.008$) makes this a more challenging testbed.
+
+\begin{table}[t]
+\centering
+\caption{Real data results: final mean knowledge on Duolingo and ASSISTments.}
+\label{tab:real_data}
+\input{tables/table_real_data}
+\end{table}
+
+\Cref{tab:real_data} reports results.
+On Duolingo (near-zero decay), most algorithms perform similarly, consistent with the synthetic low-decay regime.
+On ASSISTments (moderate decay), BKT-Bandit and PD-Whittle maintain their advantage, and the Oracle catastrophe manifests clearly.
+
+\subsection{MetaSelector Consistency}
+\label{sec:meta_consistency}
+
+MetaSelector achieves top-5 in 11/12 configurations despite never being the outright winner in more than one setting ($K{=}6$, $\lambda{=}0.01$).
+Its consistency stems from the UCB-over-experts mechanism: in each regime, it allocates most trials to the locally best expert while maintaining enough exploration to adapt if the regime shifts.
+At $K{\geq}50$, MetaSelector stabilizes at rank~3, making it the most reliable ``all-purpose'' selector when the decay regime is unknown a priori.

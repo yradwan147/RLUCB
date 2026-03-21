@@ -1,88 +1,144 @@
 \section{Methodology}
 \label{sec:method}
 
-We describe the simulation framework used to evaluate adaptive question selection.
-The framework consists of three components: a student model with learning and forgetting dynamics (\cref{sec:student_model}), two question selection strategies (\cref{sec:selection}), and the experimental design (\cref{sec:exp_design}).
+We formalize the adaptive question selection problem and describe the 14 algorithms evaluated in our study.
 
-\subsection{Student Model}
-\label{sec:student_model}
-\vspace{-1mm}
+\subsection{Problem Formulation}
+\label{sec:formulation}
 
-Each simulated student maintains a \textbf{knowledge vector} $\mathbf{k} = [k_1, k_2, \ldots, k_C]$, where $k_i \in [0, 1]$ represents the probability of answering correctly in category $i$ and $C = 6$ is the number of knowledge categories.
-Initial knowledge is sampled from a truncated normal distribution:
-\begin{equation}
-    k_i^{(0)} \sim \text{clip}\Big(\mathcal{N}(\mu \cdot d_i,\; \sigma^2),\; 0.05,\; 0.95\Big),
-    \label{eq:init_knowledge}
-\end{equation}
-where $\mu = 0.35$ is the mean knowledge level, $d_i \in [0.3, 0.7]$ is the difficulty of category $i$ (sampled uniformly), and $\sigma = 0.1$.
-When a student is quizzed on category $i$, they answer correctly with probability $k_i$ (Bernoulli trial).
+\paragraph{Student model.}
+Each student maintains a knowledge vector $\mathbf{k} = [k_1, \ldots, k_K] \in [0,1]^K$ over $K$ topics.
+When quizzed on topic $i$, the student answers correctly with probability $k_i$ (Bernoulli trial).
+Knowledge evolves according to two dynamics:
 
-\noindent\textbf{Learning Dynamics.}
-After answering a question in category $i$, knowledge is updated asymptotically:
+\noindent\textit{Learning.}
+After answering a question on topic $i$:
 \begin{equation}
     k_i \leftarrow
     \begin{cases}
-        k_i + \alpha \cdot (1 - k_i), & \text{if correct (asymptotic gain toward 1.0)}, \\
-        k_i - \beta \cdot k_i, & \text{if incorrect (multiplicative penalty)},
+        k_i + \alpha \cdot (1 - k_i), & \text{if correct}, \\
+        k_i - \beta \cdot k_i, & \text{if incorrect},
     \end{cases}
     \label{eq:learning}
 \end{equation}
 where $\alpha = 0.12$ is the learning rate and $\beta = 0.02$ is the incorrect-answer penalty.
-The asymptotic form ensures diminishing returns as knowledge approaches mastery, a well-established property of skill acquisition~\cite{anderson2014engaged}.
+The asymptotic form ensures diminishing returns as knowledge approaches mastery.
 
-\noindent\textbf{Forgetting Dynamics.}
-At each timestep, all categories \emph{not} exposed in that step undergo Ebbinghaus-inspired exponential decay~\cite{ebbinghaus1885memory,murre2015replication}:
+\noindent\textit{Forgetting.}
+At each timestep, all topics \emph{not} quizzed undergo Ebbinghaus-inspired exponential decay~\citep{ebbinghaus1885memory}:
 \begin{equation}
-    k_i \leftarrow k_{\text{base}} + (k_i - k_{\text{base}}) \cdot e^{-\lambda},
+    k_j \leftarrow k_{\mathrm{base}} + (k_j - k_{\mathrm{base}}) \cdot e^{-\lambda}, \quad \forall j \neq i,
     \label{eq:forgetting}
 \end{equation}
-where $k_{\text{base}} = 0.10$ is the retention floor (minimum knowledge that persists) and $\lambda = 0.01$ is the decay rate per timestep.
-This model captures the key property that knowledge decays toward a baseline over time without reinforcement, with the decay rate compounding naturally over consecutive unexposed timesteps.
+where $k_{\mathrm{base}} = 0.10$ is the retention floor and $\lambda > 0$ is the per-step decay rate.
+Higher $\lambda$ corresponds to faster forgetting.
 
-\subsection{Question Selection Strategies}
-\label{sec:selection}
-\vspace{-1mm}
-
-We compare two selection strategies in a between-subjects simulation design:
-
-\noindent\textbf{UCB Selection (Adaptive).}
-The next category to quiz is selected by maximizing the UCB1 score:
+\paragraph{RMAB formulation.}
+We cast this problem as a restless multi-armed bandit~\citep{whittle1988restless}.
+Each of the $K$ topics is an arm.
+The state of arm~$i$ at time~$t$ is its knowledge level $k_i^{(t)} \in [0,1]$.
+At each timestep the learner selects one arm to activate (quiz).
+The activated arm transitions according to \eqref{eq:learning}, while all passive arms decay according to \eqref{eq:forgetting}.
+The objective is to maximize cumulative mean knowledge:
 \begin{equation}
-    \text{UCB}(i) = \underbrace{(1 - r_i)}_{\text{exploitation}} + \underbrace{c \cdot \sqrt{\frac{\ln N}{n_i}}}_{\text{exploration}},
-    \label{eq:ucb}
+    \max_{\pi} \;\; \E\!\left[\frac{1}{T} \sum_{t=1}^{T} \bar{k}^{(t)}\right], \quad \text{where } \bar{k}^{(t)} = \frac{1}{K}\sum_{i=1}^{K} k_i^{(t)}.
+    \label{eq:objective}
 \end{equation}
-where $r_i$ is the cumulative correctness rate for category $i$, $N$ is the total number of questions asked, $n_i$ is the number of attempts on category $i$, and $c = \sqrt{2} \approx 1.414$ is the exploration parameter.
-The exploitation term $(1 - r_i)$ inverts the standard reward maximization: categories with \emph{lower} correctness rates receive \emph{higher} priority, directing practice toward weak areas.
-The exploration term encourages probing under-tested categories, ensuring no topic is neglected.
-Any category with $n_i = 0$ is selected first (round-robin initialization).
+This RMAB is intractable in general (PSPACE-hard~\citep{papadimitriou1999complexity}), motivating the heuristic algorithms below.
 
-\noindent\textbf{Random Selection (Control).}
-Categories are selected uniformly at random with probability $\nicefrac{1}{C}$ each.
-This serves as a strong baseline representing the default behavior of most quiz platforms.
+\subsection{Baseline Algorithms}
+\label{sec:baselines}
 
-\subsection{Experimental Design}
-\label{sec:exp_design}
-\vspace{-1mm}
+We evaluate seven baseline algorithms spanning classical bandits, heuristics, and an oracle.
 
-\begin{wraptable}[16]{r}{0.48\textwidth}
-  \centering
-  \vspace{-5mm}
-  \caption{Simulation parameters.}
-  \input{tables/config}
-  \label{tab:config}
-\end{wraptable}
+\paragraph{Random.}
+Selects a topic uniformly at random at each step.
+Serves as the primary baseline; all improvements are reported relative to Random.
 
-The experiment simulates two groups of students---UCB and Control (Random)---under identical initial conditions to isolate the effect of the selection strategy.
-Both groups share the same initial knowledge distributions and random seeds per student, differing only in question selection.
-Each group contains \textbf{100} students who each answer \textbf{10,000} questions across \textbf{6} knowledge categories.
-The complete parameter set is given in \cref{tab:config}.
+\paragraph{UCB1~\citep{auer2002finite}.}
+Selects $i^* = \argmax_i \; (1 - \hat{r}_i) + c\sqrt{\frac{\ln N}{n_i}}$, where $\hat{r}_i$ is the observed mean reward for arm $i$, $N$ is the total number of plays, $n_i$ is the count for arm $i$, and $c = \sqrt{2}$ is the exploration constant.
+The inverted reward $(1 - \hat{r}_i)$ targets weak topics.
 
-Each student has an individual UCB selector (or random selector), maintaining per-student statistics.
-At each timestep, the selector chooses a category, the student answers (Bernoulli trial based on current knowledge), knowledge is updated via \cref{eq:learning}, the selector state is updated, and forgetting is applied to all unexposed categories via \cref{eq:forgetting}.
+\paragraph{Thompson Sampling~\citep{thompson1933likelihood}.}
+Maintains a Beta posterior $\text{Beta}(\alpha_i, \beta_i)$ for each arm.
+At each step, samples $\theta_i \sim \text{Beta}(\alpha_i, \beta_i)$ and selects $i^* = \argmax_i (1 - \theta_i)$.
 
-Group-level metrics are recorded at every timestep: mean knowledge across students, per-category knowledge, weakest-category knowledge (minimum across categories per student, averaged across students), knowledge variance, cumulative accuracy, and exposure distribution.
-The experiment is replicated across 3 independent runs with different random seeds to verify robustness.
-All results are analyzed across three temporal phases: \textbf{short-term} ($t \leq 500$), \textbf{mid-term} ($500 < t \leq 2{,}000$), and \textbf{long-term} ($t > 2{,}000$).
+\paragraph{$\varepsilon$-Greedy.}
+With probability $\varepsilon = 0.1$ selects a random arm; otherwise selects the arm with the lowest observed mean reward.
 
-The simulation is implemented in Python using NumPy~\cite{harris2020array} for numerical computation and Gymnasium~\cite{towers2024gymnasium} as the RL environment interface.
-The environment exposes the student's knowledge vector as the observation space and the category index as the action space, enabling future integration with standard RL algorithms.
+\paragraph{Sliding-Window UCB (SW-UCB)~\citep{garivier2011upper}.}
+Restricts reward estimates to the most recent $\tau$ observations per arm, adapting to non-stationarity.
+Uses $\tau = 50$ in our experiments.
+
+\paragraph{Leitner System~\citep{leitner1972so}.}
+Implements the classical box-based spaced repetition heuristic.
+Topics start in box~1 and advance on correct answers; incorrect answers reset to box~1.
+Lower boxes are reviewed more frequently.
+
+\paragraph{Oracle.}
+Has access to the true knowledge vector $\mathbf{k}^{(t)}$ at each step and selects $i^* = \argmin_i \; k_i^{(t)}$---the topic with the lowest current knowledge.
+Despite perfect information, this myopic greedy policy does not account for future forgetting.
+
+\subsection{Novel Algorithms}
+\label{sec:novel}
+
+We introduce four algorithms specifically designed for the forgetting-aware selection problem.
+
+\paragraph{Forgetting-UCB (F-UCB).}
+F-UCB augments the standard UCB score with a decay-aware urgency term.
+Let $t_i$ be the number of steps since arm $i$ was last played and $\hat{r}_i$ the observed mean reward.
+The score is:
+\begin{equation}
+    s_i^{\text{F-UCB}} = \underbrace{(1 - \hat{r}_i) \cdot e^{-\lambda t_i}}_{\text{weighted weakness}} + \underbrace{\gamma \cdot (1 - e^{-\lambda t_i})}_{\text{decay urgency}} + \underbrace{c\sqrt{\frac{\ln N}{n_i}}}_{\text{exploration}},
+    \label{eq:fucb}
+\end{equation}
+where $\gamma = 1.0$ controls the urgency weight and $\lambda$ is the known decay rate.
+The first term downweights the observed weakness estimate as it becomes stale; the second term increases urgency for arms that have been decaying longer; the third is the standard UCB exploration bonus.
+
+\paragraph{BKT-Bandit.}
+BKT-Bandit maintains a Bayesian posterior over each arm's mastery probability, augmented with forgetting.
+Each arm $i$ has parameters $(\alpha_i, \beta_i)$ of a Beta distribution, updated on observations:
+\begin{equation}
+    \alpha_i \leftarrow \alpha_i + \mathbb{1}[\text{correct}], \quad
+    \beta_i \leftarrow \beta_i + \mathbb{1}[\text{incorrect}].
+\end{equation}
+Between observations, the posterior is decayed toward uncertainty:
+\begin{equation}
+    \alpha_i \leftarrow 1 + (\alpha_i - 1) \cdot e^{-\lambda}, \quad
+    \beta_i \leftarrow 1 + (\beta_i - 1) \cdot e^{-\lambda}.
+\end{equation}
+The selection score combines weakness with uncertainty:
+\begin{equation}
+    s_i^{\text{BKT}} = \underbrace{(1 - \mu_i)}_{\text{weakness}} + \underbrace{c \cdot \sigma_i}_{\text{uncertainty bonus}},
+    \label{eq:bkt}
+\end{equation}
+where $\mu_i = \frac{\alpha_i}{\alpha_i + \beta_i}$ and $\sigma_i = \sqrt{\frac{\alpha_i \beta_i}{(\alpha_i + \beta_i)^2(\alpha_i + \beta_i + 1)}}$ are the posterior mean and standard deviation.
+
+\paragraph{Whittle Advantage.}
+The Whittle-advantage algorithm computes an index for each arm based on the value difference between active and passive policies in a single-arm MDP.
+For arm $i$ with current state $k_i$, the Whittle index approximates:
+\begin{equation}
+    W_i = V_i^{\text{active}}(k_i) - V_i^{\text{passive}}(k_i),
+    \label{eq:whittle}
+\end{equation}
+where $V^{\text{active}}$ is the value of quizzing the arm (applying \eqref{eq:learning}) and $V^{\text{passive}}$ is the value of leaving it idle (applying \eqref{eq:forgetting}).
+We solve the single-arm MDP via value iteration with a discretized state space.
+The arm with the highest Whittle index is selected at each step.
+We evaluate two variants: \textbf{PD-Whittle} (probability-dependent) and \textbf{Adapt-Whittle} (adaptive estimation).
+
+\paragraph{MetaSelector.}
+MetaSelector is a UCB-over-experts meta-algorithm that maintains a portfolio of $M$ base selectors and selects among them online.
+Each base selector $j \in \{1, \ldots, M\}$ is one of the algorithms above.
+MetaSelector maintains counts $N_j$ and mean rewards $\bar{r}_j$ for each expert and selects:
+\begin{equation}
+    j^* = \argmax_j \; \bar{r}_j + c_{\text{meta}}\sqrt{\frac{\ln N}{N_j}},
+    \label{eq:meta}
+\end{equation}
+where the reward signal is the student's average knowledge after acting on expert $j$'s recommendation.
+The selected expert's arm recommendation is then executed.
+MetaSelector achieves principled regime interpolation: it automatically shifts weight toward whichever base algorithm performs best in the current $(K, \lambda)$ regime, without requiring prior knowledge of which algorithm to use.
+Its unified scoring combines weakness, decay, and uncertainty:
+\begin{equation}
+    s_i^{\text{unified}} = (1 - \mu_i) \cdot e^{-\lambda t_i} + 0.5 \cdot (1 - e^{-\lambda t_i}) + c \cdot \sigma_i.
+    \label{eq:unified}
+\end{equation}

@@ -1,9 +1,9 @@
 \begin{abstract}
-\label{sec:abstract-sec}
-Efficient allocation of practice questions is a fundamental challenge in adaptive learning systems, where students have limited time and heterogeneous knowledge across topics.
-We introduce \textbf{\ours}, an adaptive question selection strategy that applies the Upper Confidence Bound (UCB1) algorithm---originally developed for the multi-armed bandit problem---to dynamically prioritize knowledge categories where students struggle most.
-In a controlled simulation with \textbf{\numstudents} students per group across \textbf{\numcategories} knowledge categories and \textbf{\numquestions} questions per session, we compare \ours against uniform random selection under realistic learning and Ebbinghaus-inspired forgetting dynamics.
-Our key finding is that \ours provides \emph{dramatically faster improvement in weak knowledge areas}, achieving up to $\mathbf{60.7\%}$ higher performance in a student's weakest category at $t{=}100$ and maintaining a $\mathbf{36.8\%}$ advantage at $t{=}500$.
-While both strategies converge to similar knowledge ceilings given sufficient practice (${\sim}$10,000 questions), \ours reaches competitive knowledge levels in $\mathbf{3{\times}}$ fewer questions, demonstrating that its value lies in \emph{learning efficiency} rather than ultimate performance.
-We release our simulation framework and experimental data to support further research in bandit-based adaptive education.
+Adaptive question selection in educational systems is fundamentally limited by \emph{forgetting}: knowledge decays over time for topics that are not reinforced, rendering static selection policies suboptimal.
+We present a comprehensive study of 14 bandit algorithms for adaptive question selection under Ebbinghaus forgetting dynamics, framing the problem as a restless multi-armed bandit (RMAB).
+We introduce four novel algorithms---Forgetting-UCB (F-UCB), which augments exploration bonuses with decay-aware urgency; BKT-Bandit, which maintains Bayesian posteriors with integrated forgetting; Whittle-advantage, which computes budget-aware indices via MDP value differences; and MetaSelector, a UCB-over-experts approach that interpolates across regimes online.
+Ours is the first work to formalize educational quizzing as a restless bandit and to identify the \emph{Oracle catastrophe}: a clairvoyant selector that exploits current knowledge states loses to random selection in 10 out of 12 configurations due to systematic neglect of forgetting arms.
+Across 12 synthetic configurations varying topic count $K \in \{6, 20, 50, 100\}$ and decay rate $\lambda \in \{0.005, 0.01, 0.05\}$, BKT-Bandit achieves top-3 performance in 10/12 settings with $+8.2\%$ average improvement over random, F-UCB delivers up to $+41.8\%$ improvement at high decay, and MetaSelector ranks in the top-5 in 11/12 configurations with principled regime interpolation.
+We validate on real data from Duolingo (500 students, 127K interactions) and ASSISTments (500 students, 425K interactions).
+Code and data are publicly available.
 \end{abstract}

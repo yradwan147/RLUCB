@@ -6,27 +6,34 @@
 % \usepackage[final]{neurips_2025}   % camera-ready
 
 % === Core packages ===
-\usepackage[utf8]{inputenc}    % allow utf-8 input
-\usepackage[T1]{fontenc}       % use 8-bit T1 fonts
-\usepackage{hyperref}          % hyperlinks
-\usepackage{url}               % simple URL typesetting
-\usepackage{booktabs}          % professional-quality tables
-\usepackage{amsfonts}          % blackboard math symbols
-\usepackage{amsmath}           % math environments
-\usepackage{amssymb}           % math symbols
-\usepackage{nicefrac}          % compact symbols for 1/2, etc.
-\usepackage{microtype}         % microtypography
-\usepackage{xcolor}            % colors
-\usepackage{caption}           % caption control
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{caption}
 
 % === Figure and table packages ===
 \usepackage{graphicx}
-\graphicspath{{figs/}}
-\usepackage{subcaption}        % subfigures
-\usepackage{wrapfig}           % wrapped figures/tables
-\usepackage{multirow}          % multi-row table cells
-\usepackage{makecell}          % line breaks in table cells
-\usepackage{colortbl}          % colored table rows
+\graphicspath{{figs/}{figs_new/}{figures/}}
+\usepackage{subcaption}
+\usepackage{wrapfig}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{colortbl}
+
+% === Algorithm packages ===
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+% === List formatting ===
+\usepackage{enumitem}
 
 % === Cross-referencing ===
 \usepackage[capitalize,noabbrev]{cleveref}
@@ -40,25 +47,28 @@
 \definecolor{blond}{rgb}{0.98, 0.94, 0.75}
 
 % === Method name macro ===
-\newcommand{\ours}{UCB-Quiz\xspace}
+\newcommand{\ours}{ForgetBandit\xspace}
 \usepackage{xspace}
 
-% === Stat macros ===
-\newcommand{\numstudents}{100\xspace}
-\newcommand{\numcategories}{6\xspace}
-\newcommand{\numquestions}{10{,}000\xspace}
-\newcommand{\peakweakest}{60.7\%\xspace}
-\newcommand{\peakoverall}{3.9\%\xspace}
+% === Convenience macros ===
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
 
-% === Author block ===
-\title{Adaptive Question Selection via Upper Confidence Bound\\for Efficient Knowledge Acquisition: A Simulation Study}
+% ============================================================
+\title{Forgetting-Aware Bandits for Adaptive Learning:\\From UCB to Restless Experts}
 
-\author{%
-\textbf{Yousef Radwan}\\
-Independent Researcher
+\author{
+  Yousef Radwan \\
+  King Abdullah University of Science and Technology (KAUST)\\
+  Thuwal, Saudi Arabia \\
+  \texttt{yousef.radwan@kaust.edu.sa}
 }
 
 \begin{document}
+
 \maketitle
 
 \input{sec/0_abstract}
@@ -68,95 +78,118 @@ Independent Researcher
 \input{sec/4_experiments}
 \input{sec/5_conclusion}
 
-\newpage
-{\small
-\bibliographystyle{unsrt}
+\bibliographystyle{plainnat}
 \bibliography{refs}
-}
 
+% ============================================================
 \newpage
+\appendix
 \input{sec/supplementary}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ============================================================
+%% NeurIPS Paper Checklist
 \newpage
 \section*{NeurIPS Paper Checklist}
 
 \begin{enumerate}
 
 \item {\bf Claims}
-    \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: All claims are supported by simulation results presented in \cref{sec:experiments}. We clearly state the simulation-based nature of the study.
+\begin{itemize}
+  \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: All claims are supported by experiments in Section~\ref{sec:experiments}. Performance numbers are reported with standard errors across 3 seeds.
+\end{itemize}
 
 \item {\bf Limitations}
-    \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: Limitations are discussed in \cref{sec:conclusion} and Section~S3 of the supplementary material, including the use of simulated (not real) students and simplified learning dynamics.
+\begin{itemize}
+  \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: Limitations are discussed in Section~\ref{sec:conclusion} and Appendix~\ref{app:limitations}, including the synthetic-real gap and specific failure modes.
+\end{itemize}
 
-\item {\bf Theory Assumptions and Proofs}
-    \item[] Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (correct) proof?
-    \item[] Answer: \answerNA{}
-    \item[] Justification: This is an empirical simulation study. We reference the theoretical foundations of UCB1 from prior work~\cite{auer2002finite}.
+\item {\bf Theory/Proofs}
+\begin{itemize}
+  \item[] Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (or sketch) proof?
+  \item[] Answer: \answerNA{}
+  \item[] Justification: This is primarily an empirical study. The Oracle catastrophe is demonstrated empirically rather than proved theoretically.
+\end{itemize}
 
-\item {\bf Experimental Result Reproducibility}
-    \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: All simulation parameters are reported in \cref{sec:method}, the random seed is fixed at 42, and we provide complete source code.
+\item {\bf Experiments}
+\begin{itemize}
+  \item[] Question: Does the paper provide sufficient information to reproduce the experiments?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: Full hyperparameters, environment details, and compute resources are provided in Section~\ref{sec:experiments} and Appendix~\ref{app:details}. Code is publicly available.
+\end{itemize}
 
-\item {\bf Open Access to Data and Code}
-    \item[] Question: Does the paper provide open access to the data and code, with sufficient instructions to faithfully reproduce the main experimental results?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: The complete source code, experiment runner, and result data will be released on GitHub.
+\item {\bf Code and Data}
+\begin{itemize}
+  \item[] Question: Does the submission provide code and data?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: Code is included as supplementary material and will be released publicly upon acceptance.
+\end{itemize}
 
 \item {\bf Experimental Setting/Details}
-    \item[] Question: Does the paper specify all the training and test details necessary to understand the results?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: All parameters (learning rate, decay rate, exploration constant, population size, number of questions) are specified in \cref{tab:config} and \cref{sec:method}.
+\begin{itemize}
+  \item[] Question: Does the paper specify all the training and test details?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: All parameters ($\alpha$, $\beta$, $\lambda$, $K$, number of students, questions) are specified in Section~\ref{sec:experiments} and Appendix~\ref{app:details}.
+\end{itemize}
 
-\item {\bf Experiment Statistical Significance}
-    \item[] Question: Does the paper report error bars suitably and correctly defined or other appropriate information about the statistical significance of the experiments?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: We report standard deviations across the student population and analyze results across three independent runs with different seeds.
+\item {\bf Compute}
+\begin{itemize}
+  \item[] Question: Does the paper report the computational resources used?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: Compute details (KAUST IBEX cluster, CPU-only, runtimes) are reported in Appendix~\ref{app:details}.
+\end{itemize}
 
-\item {\bf Experiments Compute Resources}
-    \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources needed to reproduce the experiment?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: Computational requirements are minimal (standard CPU, under 1 minute per run) and are described in the supplementary material.
-
-\item {\bf Code of Ethics}
-    \item[] Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS Code of Ethics?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: This simulation study uses no real student data and raises no ethical concerns.
+\item {\bf Error Bars}
+\begin{itemize}
+  \item[] Question: Does the paper report error bars or confidence intervals?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: Standard errors across 3 random seeds are reported for all experiments.
+\end{itemize}
 
 \item {\bf Broader Impacts}
-    \item[] Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: We discuss the potential for more efficient personalized learning and note the need for validation with real students before deployment.
+\begin{itemize}
+  \item[] Question: Does the paper discuss potential broader societal impacts?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: The work targets educational technology. Positive impacts (personalized learning) and risks (over-reliance on automated tutoring) are discussed in Section~\ref{sec:conclusion}.
+\end{itemize}
 
 \item {\bf Safeguards}
-    \item[] Question: Does the paper describe safeguards that have been put in place for responsible release of data or models?
-    \item[] Answer: \answerNA{}
-    \item[] Justification: The released code is a simulation framework with no potential for misuse.
+\begin{itemize}
+  \item[] Question: Does the paper describe safeguards for responsible use?
+  \item[] Answer: \answerNA{}
+  \item[] Justification: The system selects quiz questions and does not pose safety risks.
+\end{itemize}
 
-\item {\bf Licenses for Existing Assets}
-    \item[] Question: Are the creators or original owners of assets used in the paper properly credited?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: We cite the Gymnasium framework~\cite{towers2024gymnasium} and all algorithmic foundations.
+\item {\bf Licenses}
+\begin{itemize}
+  \item[] Question: Are the creators of assets used in the paper properly credited and license terms respected?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: Duolingo and ASSISTments datasets are properly cited and used under their respective licenses.
+\end{itemize}
 
 \item {\bf New Assets}
-    \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: The simulation framework includes documentation, a README, and CLI help.
+\begin{itemize}
+  \item[] Question: Are new assets introduced in the paper well documented?
+  \item[] Answer: \answerYes{}
+  \item[] Justification: Our benchmark code and synthetic environment are documented and will be released with an open-source license.
+\end{itemize}
 
-\item {\bf Crowdsourcing and Research with Human Subjects}
-    \item[] Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants?
-    \item[] Answer: \answerNA{}
-    \item[] Justification: No human subjects were involved; all students are simulated.
+\item {\bf Human Subjects}
+\begin{itemize}
+  \item[] Question: Does the paper involve crowdsourcing or human subjects?
+  \item[] Answer: \answerNo{}
+  \item[] Justification: We use existing public datasets and synthetic simulations only.
+\end{itemize}
 
-\item {\bf Declaration of LLM usage}
-    \item[] Question: Does the paper describe the usage of LLMs in the research process?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: An LLM (Claude) was used to assist with paper writing and code documentation. No LLMs were used in the experimental methodology or data generation.
+\item {\bf IRB Approval}
+\begin{itemize}
+  \item[] Question: Does the research involve human subjects requiring IRB approval?
+  \item[] Answer: \answerNo{}
+  \item[] Justification: No new human data was collected.
+\end{itemize}
 
 \end{enumerate}
 

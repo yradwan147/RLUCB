@@ -2,6 +2,13 @@
 @String{icml = {International Conference on Machine Learning}}
 @String{aaai = {AAAI Conference on Artificial Intelligence}}
 @String{jmlr = {Journal of Machine Learning Research}}
+@String{aistats = {International Conference on Artificial Intelligence and Statistics}}
+@String{acl = {Proceedings of the Annual Meeting of the Association for Computational Linguistics}}
+@String{kdd = {Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}}
+
+% ============================================================
+% Bandits — Core
+% ============================================================
 
 @article{auer2002finite,
   title={Finite-time analysis of the multiarmed bandit problem},
@@ -20,6 +27,64 @@
   year={2020},
   publisher={Cambridge University Press}
 }
+
+@article{thompson1933likelihood,
+  title={On the likelihood that one unknown probability exceeds another in view of the evidence of two samples},
+  author={Thompson, William R.},
+  journal={Biometrika},
+  volume={25},
+  number={3--4},
+  pages={285--294},
+  year={1933},
+  publisher={Oxford University Press}
+}
+
+% ============================================================
+% Non-Stationary and Restless Bandits
+% ============================================================
+
+@inproceedings{garivier2011upper,
+  title={On upper-confidence bound policies for switching bandit problems},
+  author={Garivier, Aur{\'e}lien and Moulines, Eric},
+  booktitle={International Conference on Algorithmic Learning Theory},
+  pages={174--188},
+  year={2011},
+  publisher={Springer}
+}
+
+@article{whittle1988restless,
+  title={Restless bandits: Activity allocation in a changing world},
+  author={Whittle, Peter},
+  journal={Journal of Applied Probability},
+  volume={25},
+  number={A},
+  pages={287--298},
+  year={1988},
+  publisher={Cambridge University Press}
+}
+
+@inproceedings{papadimitriou1999complexity,
+  title={The complexity of optimal queuing network control},
+  author={Papadimitriou, Christos H. and Tsitsiklis, John N.},
+  booktitle={Mathematics of Operations Research},
+  volume={24},
+  number={2},
+  pages={293--305},
+  year={1999}
+}
+
+% TODO: verify venue and pages
+@inproceedings{agarwal2017corralling,
+  title={Corralling a band of bandit algorithms},
+  author={Agarwal, Alekh and Luo, Haipeng and Neyshabur, Behnam and Schapire, Robert E.},
+  booktitle={Conference on Learning Theory},
+  pages={12--38},
+  year={2017}
+}
+
+% ============================================================
+% Forgetting and Memory
+% ============================================================
 
 @book{ebbinghaus1885memory,
   title={{\"U}ber das {G}ed{\"a}chtnis: {U}ntersuchungen zur experimentellen {P}sychologie},
@@ -40,6 +105,10 @@
   publisher={Public Library of Science}
 }
 
+% ============================================================
+% Knowledge Tracing
+% ============================================================
+
 @article{corbett1994knowledge,
   title={Knowledge tracing: Modeling the acquisition of procedural knowledge},
   author={Corbett, Albert T. and Anderson, John R.},
@@ -50,6 +119,111 @@
   year={1994},
   publisher={Springer}
 }
+
+@inproceedings{piech2015deep,
+  title={Deep knowledge tracing},
+  author={Piech, Chris and Bassen, Jonathan and Huang, Jonathan and Ganguli, Surya and Sahami, Mehran and Guibas, Leonidas J. and Sohl-Dickstein, Jascha},
+  booktitle=neurips,
+  volume={28},
+  year={2015}
+}
+
+@inproceedings{yudelson2013individualized,
+  title={Individualized {B}ayesian knowledge tracing models},
+  author={Yudelson, Michael V. and Koedinger, Kenneth R. and Gordon, Geoffrey J.},
+  booktitle={International Conference on Artificial Intelligence in Education},
+  pages={171--180},
+  year={2013},
+  publisher={Springer}
+}
+
+% ============================================================
+% Bandits in Education
+% ============================================================
+
+@inproceedings{clement2015multi,
+  title={Multi-armed bandits for intelligent tutoring systems},
+  author={Cl{\'e}ment, Benjamin and Roy, Didier and Oudeyer, Pierre-Yves and Lopes, Manuel},
+  journal={Journal of Educational Data Mining},
+  volume={7},
+  number={2},
+  pages={20--48},
+  year={2015}
+}
+
+@inproceedings{liu2014trading,
+  title={Trading off scientific knowledge and user learning with multi-armed bandits},
+  author={Liu, Yun-En and Koedinger, Kenneth R.},
+  booktitle={International Conference on Educational Data Mining},
+  year={2014}
+}
+
+@inproceedings{rafferty2019statistical,
+  title={Statistical consequences of using multi-armed bandits to conduct adaptive educational experiments},
+  author={Rafferty, Anna N. and Ying, Haotian and Williams, Joseph Jay},
+  journal={Journal of Educational and Behavioral Statistics},
+  volume={44},
+  number={6},
+  pages={666--695},
+  year={2019}
+}
+
+% ============================================================
+% Spaced Repetition
+% ============================================================
+
+@book{leitner1972so,
+  title={So lernt man lernen},
+  author={Leitner, Sebastian},
+  year={1972},
+  publisher={Herder}
+}
+
+@inproceedings{tabibian2019enhancing,
+  title={Enhancing human learning via spaced repetition optimization},
+  author={Tabibian, Behzad and Upadhyay, Utkarsh and De, Abir and Zarezade, Ali and Sch{\"o}lkopf, Bernhard and Gomez-Rodriguez, Manuel},
+  booktitle={Proceedings of the National Academy of Sciences},
+  volume={116},
+  number={10},
+  pages={3988--3993},
+  year={2019}
+}
+
+% TODO: verify year and venue
+@inproceedings{reddy2016unbounded,
+  title={Unbounded human learning: Optimal scheduling for spaced repetition},
+  author={Reddy, Siddharth and Labutov, Igor and Banerjee, Siddhartha and Joachims, Thorsten},
+  booktitle=kdd,
+  pages={1815--1824},
+  year={2016}
+}
+
+@inproceedings{settles2016trainable,
+  title={A trainable spaced repetition model for language learning},
+  author={Settles, Burr and Meeder, Brendan},
+  booktitle=acl,
+  pages={1848--1858},
+  year={2016}
+}
+
+% ============================================================
+% Duolingo (Settles already above) and ASSISTments
+% ============================================================
+
+@inproceedings{feng2009addressing,
+  title={Addressing the assessment challenge with an online system that tutors as it assesses},
+  author={Feng, Mingyu and Heffernan, Neil and Koedinger, Kenneth},
+  journal={User Modeling and User-Adapted Interaction},
+  volume={19},
+  number={3},
+  pages={243--266},
+  year={2009},
+  publisher={Springer}
+}
+
+% ============================================================
+% ITS and Education
+% ============================================================
 
 @article{vanlehn2011relative,
   title={The relative effectiveness of human tutoring, intelligent tutoring systems, and other tutoring systems},
@@ -76,8 +250,7 @@
   title={Intelligent Tutoring Systems},
   author={Anderson, John R. and Boyle, C. Franklin and Reiser, Brian J.},
   year={1985},
-  publisher={Lawrence Erlbaum Associates},
-  note={In: Proceedings of the National Academy of Sciences}
+  publisher={Lawrence Erlbaum Associates}
 }
 
 @book{anderson2014engaged,
@@ -86,54 +259,6 @@
   year={1993},
   publisher={Lawrence Erlbaum Associates},
   note={Foundations of ACT-R cognitive architecture}
-}
-
-@inproceedings{piech2015deep,
-  title={Deep knowledge tracing},
-  author={Piech, Chris and Bassen, Jonathan and Huang, Jonathan and Ganguli, Surya and Sahami, Mehran and Guibas, Leonidas J. and Sohl-Dickstein, Jascha},
-  booktitle=neurips,
-  volume={28},
-  year={2015}
-}
-
-@inproceedings{yudelson2013individualized,
-  title={Individualized {B}ayesian knowledge tracing models},
-  author={Yudelson, Michael V. and Koedinger, Kenneth R. and Gordon, Geoffrey J.},
-  booktitle={International Conference on Artificial Intelligence in Education},
-  pages={171--180},
-  year={2013},
-  publisher={Springer}
-}
-
-@inproceedings{clement2015multi,
-  title={Multi-armed bandits for intelligent tutoring systems},
-  author={Cl{\'e}ment, Benjamin and Roy, Didier and Oudeyer, Pierre-Yves and Lopes, Manuel},
-  journal={Journal of Educational Data Mining},
-  volume={7},
-  number={2},
-  pages={20--48},
-  year={2015}
-}
-
-@inproceedings{liu2014trading,
-  title={Trading off scientific knowledge and user learning with multi-armed bandits},
-  author={Liu, Yun-En and Koedinger, Kenneth R.},
-  booktitle={International Conference on Educational Data Mining},
-  year={2014}
-}
-
-@inproceedings{rafferty2019statistical,
-  title={Statistical consequences of using multi-armed bandits to conduct adaptive educational experiments},
-  author={Rafferty, Anna N. and Ying, Haotian and Williams, Joseph Jay},
-  journal={Journal of Educational and Behavioral Statistics},
-  year={2019}
-}
-
-@inproceedings{shaikh2017adaptive,
-  title={Adaptive e-learning using multi-armed bandit algorithms},
-  author={Shaikh, Ghaus and Iqbal, Syed and Daud, Ali},
-  booktitle={International Conference on Information and Communication Technologies},
-  year={2017}
 }
 
 @article{doroudi2019where,
@@ -147,32 +272,9 @@
   publisher={Springer}
 }
 
-@article{cepeda2006distributed,
-  title={Distributed practice in verbal recall tasks: A review and quantitative synthesis},
-  author={Cepeda, Nicholas J. and Pashler, Harold and Vul, Edward and Wixted, John T. and Rohrer, Doug},
-  journal={Psychological Bulletin},
-  volume={132},
-  number={3},
-  pages={354--380},
-  year={2006},
-  publisher={American Psychological Association}
-}
-
-@book{leitner1972so,
-  title={So lernt man lernen},
-  author={Leitner, Sebastian},
-  year={1972},
-  publisher={Herder}
-}
-
-@article{wozniak1995two,
-  title={Two components of long-term memory},
-  author={Wozniak, Piotr A. and Gorzelaczyk, Edward J.},
-  journal={Acta Neurobiologiae Experimentalis},
-  volume={55},
-  pages={301--305},
-  year={1995}
-}
+% ============================================================
+% Forgetting models
+% ============================================================
 
 @article{pavlik2005practice,
   title={Practice and forgetting effects on vocabulary memory: An activation-based model of the spacing effect},
@@ -184,12 +286,61 @@
   year={2005}
 }
 
-@inproceedings{settles2016trainable,
-  title={A trainable spaced repetition model for language learning},
-  author={Settles, Burr and Meeder, Brendan},
-  booktitle={Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics},
-  pages={1848--1858},
-  year={2016}
+@article{cepeda2006distributed,
+  title={Distributed practice in verbal recall tasks: A review and quantitative synthesis},
+  author={Cepeda, Nicholas J. and Pashler, Harold and Vul, Edward and Wixted, John T. and Rohrer, Doug},
+  journal={Psychological Bulletin},
+  volume={132},
+  number={3},
+  pages={354--380},
+  year={2006},
+  publisher={American Psychological Association}
+}
+
+@article{wozniak1995two,
+  title={Two components of long-term memory},
+  author={Wozniak, Piotr A. and Gorzelaczyk, Edward J.},
+  journal={Acta Neurobiologiae Experimentalis},
+  volume={55},
+  pages={301--305},
+  year={1995}
+}
+
+% ============================================================
+% Online Learning
+% ============================================================
+
+% TODO: verify exact publication details
+@book{orabona2025online,
+  title={A Modern Introduction to Online Learning},
+  author={Orabona, Francesco},
+  year={2025},
+  publisher={arXiv:1912.13213},
+  note={Second edition}
+}
+
+% ============================================================
+% EduQate — RMAB for education
+% ============================================================
+
+% TODO: verify venue (appears to be a workshop/preprint)
+@inproceedings{mate2024eduqate,
+  title={{EduQate}: Generating adaptive curricula through restless bandits},
+  author={Mate, Aditya and Madaan, Lovish and Taneja, Anirudha and Madhiwalla, Neha and Verma, Sahil and Singh, Gargi and Tambe, Milind},
+  booktitle={International Conference on Autonomous Agents and Multiagent Systems},
+  year={2024}
+}
+
+% ============================================================
+% Additional references
+% ============================================================
+
+@misc{towers2024gymnasium,
+  title={Gymnasium: A Standard Interface for Reinforcement Learning Environments},
+  author={Towers, Mark and Kwiatkowski, Ariel and Terry, Jordan and Balis, John U. and De Cola, Gianluca and Deleu, Tristan and Goul{\~a}o, Manuel and Kallinteris, Andreas and Krimmel, Markus and KG, Arjun and others},
+  year={2024},
+  eprint={2407.17032},
+  archivePrefix={arXiv}
 }
 
 @article{harris2020array,
@@ -203,10 +354,52 @@
   publisher={Nature Publishing Group}
 }
 
-@misc{towers2024gymnasium,
-  title={Gymnasium: A Standard Interface for Reinforcement Learning Environments},
-  author={Towers, Mark and Kwiatkowski, Ariel and Terry, Jordan and Balis, John U. and De Cola, Gianluca and Deleu, Tristan and Goul{\~a}o, Manuel and Kallinteris, Andreas and Krimmel, Markus and KG, Arjun and others},
-  year={2024},
-  eprint={2407.17032},
-  archivePrefix={arXiv}
+@inproceedings{shaikh2017adaptive,
+  title={Adaptive e-learning using multi-armed bandit algorithms},
+  author={Shaikh, Ghaus and Iqbal, Syed and Daud, Ali},
+  booktitle={International Conference on Information and Communication Technologies},
+  year={2017}
+}
+
+% TODO: verify details
+@inproceedings{zhao2023restless,
+  title={Restless bandits with many arms: Beating the central limit theorem},
+  author={Zhao, Yige and Frazier, Peter},
+  booktitle=neurips,
+  year={2023}
+}
+
+% TODO: verify details
+@article{glazebrook2006some,
+  title={Some indexable families of restless bandit problems},
+  author={Glazebrook, Kevin D. and Ruiz-Hernandez, Diego and Sherlaw-Johnson, Christopher},
+  journal={Advances in Applied Probability},
+  volume={38},
+  number={3},
+  pages={643--672},
+  year={2006}
+}
+
+@inproceedings{liu2010learning,
+  title={Learning to exploit prior knowledge for adaptive question selection},
+  author={Liu, Yun-En and Sloan, Luke and Hawley, Zachary and Ashby, Seth and Koedinger, Kenneth R.},
+  booktitle={International Conference on Educational Data Mining},
+  year={2014}
+}
+
+@article{atkinson1972ingredients,
+  title={Ingredients for a theory of instruction},
+  author={Atkinson, Richard C.},
+  journal={American Psychologist},
+  volume={27},
+  number={10},
+  pages={921--931},
+  year={1972}
+}
+
+@inproceedings{lan2016contextual,
+  title={A contextual bandits framework for personalized learning action selection},
+  author={Lan, Andrew S. and Baraniuk, Richard G.},
+  booktitle={International Conference on Educational Data Mining},
+  year={2016}
 }

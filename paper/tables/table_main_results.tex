@@ -1,0 +1,23 @@
+\centering
+\scalebox{0.82}{
+\begin{tabular}{lccc}
+\toprule
+\textbf{Algorithm} & $\lambda{=}0.005$ & $\lambda{=}0.01$ & $\lambda{=}0.05$ \\
+\midrule
+\rowcolor{blond} Oracle           & \textbf{0.790} & \textbf{0.584} & 0.122 \\
+Adapt-Whittle     & \underline{0.790}     & 0.576          & 0.155 \\
+Leitner           & 0.787                 & 0.573          & 0.165 \\
+PD-Whittle        & 0.786                 & \underline{0.582} & 0.153 \\
+MetaSelector      & 0.785                 & 0.582          & 0.158 \\
+BKT-Bandit        & 0.785                 & 0.581          & 0.164 \\
+Whittle           & 0.783                 & 0.580          & 0.160 \\
+F-UCB             & 0.781                 & 0.566          & \textbf{0.211} \\
+Decay-UCB         & 0.779                 & 0.563          & 0.195 \\
+SW-UCB            & 0.778                 & 0.560          & \underline{0.206} \\
+$\varepsilon$-Greedy & 0.776              & 0.558          & 0.177 \\
+Thompson          & 0.775                 & 0.556          & 0.170 \\
+Random            & 0.774                 & 0.561          & 0.149 \\
+UCB1              & 0.749                 & 0.534          & 0.131 \\
+\bottomrule
+\end{tabular}
+}
