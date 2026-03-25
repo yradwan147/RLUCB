@@ -19,6 +19,7 @@
     \item \textbf{Section~\ref{app:additional}:} Additional results and consistency analysis.
     \item \textbf{Section~\ref{app:pseudocode}:} Algorithm pseudocode for MetaSelector.
     \item \textbf{Section~\ref{app:realdata}:} Real data fitting details.
+    \item \textbf{Section~\ref{app:whittle}:} Whittle index implementation details.
     \item \textbf{Section~\ref{app:limitations}:} Extended limitations discussion.
 \end{itemize}
 
@@ -80,9 +81,9 @@ MetaSelector never drops below rank~6 in any configuration (top-5 in 11/12), mak
 
 \paragraph{Temporal dynamics.}
 Knowledge trajectories reveal qualitatively different phases.
-In the first 1{,}000 steps, exploration-heavy algorithms (UCB1, Thompson) lag behind exploitation-heavy ones (Oracle, $\varepsilon$-Greedy).
+In the first 1{,}000 steps, exploration-heavy algorithms (UCB1, Thompson) lag behind exploitation-heavy ones (Greedy-Min, $\varepsilon$-Greedy).
 Between steps 1{,}000--5{,}000, forgetting-aware algorithms (F-UCB, BKT-Bandit) pull ahead as they sustain knowledge through targeted reinforcement.
-Beyond 5{,}000 steps, MetaSelector's regime interpolation stabilizes performance, while Oracle's chasing behavior causes progressive degradation.
+Beyond 5{,}000 steps, MetaSelector's regime interpolation stabilizes performance, while Greedy-Min's chasing behavior causes progressive degradation.
 
 % ============================================================
 \section{Algorithm Pseudocode}
@@ -132,7 +133,7 @@ We fit student model parameters via maximum likelihood estimation on held-out da
     \item Initial knowledge: $k_0 = 0.91$
 \end{itemize}
 The near-zero decay rate is consistent with Duolingo's built-in spaced repetition system already mitigating forgetting.
-In this regime, most algorithms perform similarly, and the Oracle catastrophe does not manifest strongly.
+In this regime, most algorithms perform similarly, and the Greedy-Min catastrophe does not manifest strongly.
 
 \paragraph{ASSISTments.}
 We use the ASSISTments 2009--2010 skill-builder dataset~\citep{feng2009addressing}, sampling 500 students with at least 100 interactions, yielding 425{,}000 total interactions.
@@ -145,7 +146,13 @@ Fitted parameters:
     \item Initial knowledge: $k_0 = 0.71$
 \end{itemize}
 The non-trivial decay ($\lambda = 0.008$) makes ASSISTments a more informative testbed.
-BKT-Bandit and PD-Whittle maintain their advantage, and the Oracle catastrophe is visible (Oracle underperforms Random).
+BKT-Bandit and PD-Whittle maintain their advantage, and the Greedy-Min catastrophe is visible (Greedy-Min underperforms Random).
+
+% ============================================================
+\section{Whittle Index Implementation Details}
+\label{app:whittle}
+
+The Whittle advantage index is computed on a discretized state space with $M=50$ bins over $k \in [0.01, 0.99]$. Value iteration uses convergence threshold $10^{-8}$ with maximum 500 iterations. The advantage index $W(k) = V_{\text{mixed}}(k) - V_{\text{passive}}(k)$ uses mixed transition probability $1/K$ to account for the budget constraint. Precomputation takes ${\sim}2$ seconds per configuration; online lookup is $O(1)$ via nearest-state interpolation.
 
 % ============================================================
 \section{Extended Limitations}

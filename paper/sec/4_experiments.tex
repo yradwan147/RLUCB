@@ -14,7 +14,7 @@ Student model parameters are $\alpha = 0.12$, $\beta = 0.02$, $k_{\mathrm{base}}
 The evaluation metric is \textbf{final mean knowledge} $\bar{k}^{(T)} = \frac{1}{K}\sum_{i=1}^{K} k_i^{(T)}$, averaged across students and seeds.
 
 \paragraph{Algorithms.}
-We compare 14 algorithms: Random, UCB1, Thompson Sampling, $\varepsilon$-Greedy, SW-UCB, Leitner, Oracle, F-UCB, BKT-Bandit, PD-Whittle, Adapt-Whittle, Whittle (basic), MetaSelector, and a Decay-UCB variant.
+We compare 14 algorithms: Random, UCB1, Thompson Sampling, $\varepsilon$-Greedy, SW-UCB, Leitner, Greedy-Min, F-UCB, BKT-Bandit, PD-Whittle, Adapt-Whittle, Whittle (basic), MetaSelector, and a Decay-UCB variant.
 
 \subsection{Main Results: $K{=}6$}
 \label{sec:main_results}
@@ -31,13 +31,13 @@ Results averaged over 100 students and 3 seeds.}
 \end{table}
 
 At low decay ($\lambda{=}0.005$), the problem is easy and most algorithms cluster near $\bar{k} \approx 0.785$.
-Oracle achieves the best score (0.790), but its advantage is marginal.
-At moderate decay ($\lambda{=}0.01$), differences emerge: Oracle still leads (0.584), but MetaSelector (0.582) and PD-Whittle (0.582) are within one standard error.
+Greedy-Min achieves the best score (0.790), but its advantage is marginal.
+At moderate decay ($\lambda{=}0.01$), differences emerge: Greedy-Min still leads (0.584), but MetaSelector (0.582) and PD-Whittle (0.582) are within one standard error.
 BKT-Bandit (0.581) and basic Whittle (0.580) closely follow.
 
 The picture changes dramatically at high decay ($\lambda{=}0.05$): \textbf{F-UCB dominates} with $\bar{k} = 0.211$, a $+41.6\%$ improvement over Random (0.149).
 SW-UCB (0.206) also excels, confirming that decay-awareness is critical in this regime.
-Crucially, \textbf{Oracle collapses} to 0.122, finishing \emph{below Random}---the Oracle catastrophe.
+Crucially, \textbf{Greedy-Min collapses} to 0.122, finishing \emph{below Random}---the Greedy-Min catastrophe.
 
 \subsection{Scaling Analysis}
 \label{sec:scaling}
@@ -51,36 +51,36 @@ Crucially, \textbf{Oracle collapses} to 0.122, finishing \emph{below Random}---t
 
 \Cref{tab:scaling} shows how algorithms scale as the number of topics increases from $K{=}6$ to $K{=}100$ at fixed $\lambda{=}0.01$.
 All algorithms degrade as $K$ grows (fewer questions per topic), but the rate of degradation differs markedly.
-BKT-Bandit maintains the strongest relative performance across all scales, while Oracle's disadvantage grows with $K$.
+BKT-Bandit maintains the strongest relative performance across all scales, while Greedy-Min's disadvantage grows with $K$.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.9\textwidth]{fig_scaling.png}
-  \caption{Scaling behavior at $\lambda{=}0.01$: final mean knowledge decreases as $K$ grows. BKT-Bandit (green) maintains the strongest relative performance; Oracle (orange) degrades fastest.}
+  \caption{Scaling behavior at $\lambda{=}0.01$: final mean knowledge decreases as $K$ grows. BKT-Bandit (green) maintains the strongest relative performance; Greedy-Min (orange) degrades fastest.}
   \label{fig:scaling}
 \end{figure}
 
-\subsection{The Oracle Catastrophe}
+\subsection{The Greedy-Min Catastrophe}
 \label{sec:oracle}
 
-The most striking finding is that Oracle---a clairvoyant selector with perfect knowledge of the current state---\textbf{loses to Random in 10 out of 12 configurations} and finishes last in 9/12.
-This counterintuitive result arises because Oracle's greedy policy $i^* = \argmin_i k_i^{(t)}$ creates a destructive feedback loop:
+The most striking finding is that Greedy-Min---a myopic selector with perfect knowledge of the current state---\textbf{loses to Random in 10 out of 12 configurations} and finishes last in 9/12.
+This counterintuitive result arises because the greedy policy $i^* = \argmin_i k_i^{(t)}$ creates a destructive feedback loop:
 
 \begin{enumerate}[leftmargin=*,itemsep=1pt]
-    \item Oracle identifies the weakest topic and quizzes it, raising its knowledge.
+    \item Greedy-Min identifies the weakest topic and quizzes it, raising its knowledge.
     \item Meanwhile, all other $K{-}1$ topics decay unobserved.
-    \item At the next step, a different topic is now weakest (due to decay), so Oracle switches.
+    \item At the next step, a different topic is now weakest (due to decay), so Greedy-Min switches.
     \item This ``chasing'' behavior means no topic receives sustained practice, preventing consolidation.
 \end{enumerate}
 
 The catastrophe is \emph{worse} at higher $K$ (more arms decay per step) and higher $\lambda$ (faster decay).
-At $K{=}6$, $\lambda{=}0.05$, Oracle achieves only $0.122$ versus Random's $0.149$---an $18.1\%$ deficit.
+At $K{=}6$, $\lambda{=}0.05$, Greedy-Min achieves only $0.122$ versus Random's $0.149$---an $18.1\%$ deficit.
 This finding demonstrates that \emph{perfect state information is insufficient} for effective selection under forgetting; what matters is the ability to anticipate and counteract future decay.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.95\textwidth]{fig_oracle_catastrophe.png}
-  \caption{Oracle catastrophe: Oracle's rank out of 14 algorithms across all 12 configurations. Red bars indicate last-place finishes. Oracle finishes last in 9/12 and loses to Random in 10/12.}
+  \caption{Greedy-Min catastrophe: Greedy-Min's rank out of 14 algorithms across all 12 configurations. Red bars indicate last-place finishes. Greedy-Min finishes last in 9/12 and loses to Random in 10/12.}
   \label{fig:oracle_catastrophe}
 \end{figure}
 
@@ -90,7 +90,7 @@ This finding demonstrates that \emph{perfect state information is insufficient} 
 Different algorithms dominate in different $(K, \lambda)$ regimes:
 
 \begin{itemize}[leftmargin=*,itemsep=1pt]
-    \item \textbf{Low decay ($\lambda{=}0.005$):} Forgetting is mild; Adapt-Whittle and Oracle perform well. Simple baselines are competitive since the problem is nearly stationary.
+    \item \textbf{Low decay ($\lambda{=}0.005$):} Forgetting is mild; Adapt-Whittle and Greedy-Min perform well. Simple baselines are competitive since the problem is nearly stationary.
     \item \textbf{Moderate decay ($\lambda{=}0.01$):} BKT-Bandit and PD-Whittle excel. Bayesian tracking of uncertainty provides an edge.
     \item \textbf{High decay ($\lambda{=}0.05$):} F-UCB and SW-UCB dominate. Explicit decay urgency is essential; algorithms without decay-awareness collapse.
     \item \textbf{Large $K$ ($K{\geq}50$):} MetaSelector stabilizes at rank~3 and achieves top-5 in 11/12 configurations. Its regime interpolation automatically favors the best expert.
@@ -118,6 +118,9 @@ We sample 500 students from ASSISTments~\citep{feng2009addressing}, totaling 425
 Fitted parameters: $\alpha{=}0.090$, $\beta{=}0.077$, $\lambda{=}0.008$, $k_0{=}0.71$.
 Non-trivial decay ($\lambda{=}0.008$) makes this a more challenging testbed.
 
+\paragraph{Replay protocol.}
+Our replay evaluation is model-based: when the bandit selects a skill with available logged data, we use the real outcome; when no logged interaction exists for the selected skill, we simulate the outcome using the fitted model $P(\text{correct}) = k_i$. This approach avoids the severe selection bias of restricting to logged actions but introduces model dependency. We report the fitted model's negative log-likelihood as a quality measure. Standard off-policy corrections (IPS, doubly-robust estimation) are applicable when propensity scores are available; we leave this extension to future work.
+
 \begin{table}[t]
 \centering
 \caption{Real data results: final mean knowledge on Duolingo and ASSISTments.}
@@ -127,7 +130,7 @@ Non-trivial decay ($\lambda{=}0.008$) makes this a more challenging testbed.
 
 \Cref{tab:real_data} reports results.
 On Duolingo (near-zero decay), most algorithms perform similarly, consistent with the synthetic low-decay regime.
-On ASSISTments (moderate decay), BKT-Bandit and PD-Whittle maintain their advantage, and the Oracle catastrophe manifests clearly.
+On ASSISTments (moderate decay), BKT-Bandit and PD-Whittle maintain their advantage, and the Greedy-Min catastrophe manifests clearly.
 
 \subsection{MetaSelector Consistency}
 \label{sec:meta_consistency}

@@ -49,7 +49,7 @@ This RMAB is intractable in general (PSPACE-hard~\citep{papadimitriou1999complex
 \subsection{Baseline Algorithms}
 \label{sec:baselines}
 
-We evaluate seven baseline algorithms spanning classical bandits, heuristics, and an oracle.
+We evaluate seven baseline algorithms spanning classical bandits, heuristics, and a myopic greedy policy.
 
 \paragraph{Random.}
 Selects a topic uniformly at random at each step.
@@ -75,7 +75,7 @@ Implements the classical box-based spaced repetition heuristic.
 Topics start in box~1 and advance on correct answers; incorrect answers reset to box~1.
 Lower boxes are reviewed more frequently.
 
-\paragraph{Oracle.}
+\paragraph{Greedy-Min.\footnote{The Greedy-Min policy selects the category with lowest current knowledge. Despite having access to the true knowledge state, it is myopic---it does not plan ahead or account for future forgetting dynamics.}}
 Has access to the true knowledge vector $\mathbf{k}^{(t)}$ at each step and selects $i^* = \argmin_i \; k_i^{(t)}$---the topic with the lowest current knowledge.
 Despite perfect information, this myopic greedy policy does not account for future forgetting.
 
@@ -107,6 +107,8 @@ Between observations, the posterior is decayed toward uncertainty:
     \alpha_i \leftarrow 1 + (\alpha_i - 1) \cdot e^{-\lambda}, \quad
     \beta_i \leftarrow 1 + (\beta_i - 1) \cdot e^{-\lambda}.
 \end{equation}
+The exponential posterior shrinkage toward the prior can be interpreted as a discounted posterior~\citep{raj2017taming}, where the effective sample size of past observations decays geometrically with rate $e^{-\lambda}$. This is equivalent to a Bayesian update under a hazard model where the student's knowledge state may change (due to forgetting) with probability $1 - e^{-\lambda}$ per timestep, justifying the use of a time-varying posterior.
+
 The selection score combines weakness with uncertainty:
 \begin{equation}
     s_i^{\text{BKT}} = \underbrace{(1 - \mu_i)}_{\text{weakness}} + \underbrace{c \cdot \sigma_i}_{\text{uncertainty bonus}},
@@ -127,7 +129,7 @@ The arm with the highest Whittle index is selected at each step.
 We evaluate two variants: \textbf{PD-Whittle} (probability-dependent) and \textbf{Adapt-Whittle} (adaptive estimation).
 
 \paragraph{MetaSelector.}
-MetaSelector is a UCB-over-experts meta-algorithm that maintains a portfolio of $M$ base selectors and selects among them online.
+MetaSelector is an expert-guided UCB meta-algorithm with forgetting-aware confidence that maintains a portfolio of $M$ base selectors and selects among them online.
 Each base selector $j \in \{1, \ldots, M\}$ is one of the algorithms above.
 MetaSelector maintains counts $N_j$ and mean rewards $\bar{r}_j$ for each expert and selects:
 \begin{equation}
@@ -137,6 +139,7 @@ MetaSelector maintains counts $N_j$ and mean rewards $\bar{r}_j$ for each expert
 where the reward signal is the student's average knowledge after acting on expert $j$'s recommendation.
 The selected expert's arm recommendation is then executed.
 MetaSelector achieves principled regime interpolation: it automatically shifts weight toward whichever base algorithm performs best in the current $(K, \lambda)$ regime, without requiring prior knowledge of which algorithm to use.
+We explored formal expert aggregation approaches (EXP4, Corral~\citep{agarwal2017corralling}) but found that the partial-observability reward signal---binary correctness rather than knowledge gain---prevented reliable expert tracking.
 Its unified scoring combines weakness, decay, and uncertainty:
 \begin{equation}
     s_i^{\text{unified}} = (1 - \mu_i) \cdot e^{-\lambda t_i} + 0.5 \cdot (1 - e^{-\lambda t_i}) + c \cdot \sigma_i.

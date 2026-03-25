@@ -19,7 +19,7 @@ Knowledge tracing models~\citep{corbett1994knowledge,piech2015deep} provide soph
   \vspace{-4mm}
   \vspace{-\intextsep}
   \includegraphics[width=0.40\textwidth]{fig_teaser.png}
-  \caption{Knowledge trajectories at $K\!=\!6$, $\lambda\!=\!0.01$. MetaSelector achieves the highest final knowledge among non-oracle methods.}
+  \caption{Knowledge trajectories at $K\!=\!6$, $\lambda\!=\!0.01$. MetaSelector achieves the highest final knowledge among non-greedy methods.}
   \label{fig:teaser}
   \vspace{-4mm}
 \end{wrapfigure}
@@ -30,12 +30,12 @@ Within this formulation, we develop four novel algorithms: \textbf{F-UCB}, which
 
 Our experiments across 12 synthetic configurations (varying $K \in \{6, 20, 50, 100\}$ topics and $\lambda \in \{0.005, 0.01, 0.05\}$ decay rates) and 2 real datasets reveal a nuanced landscape of algorithm performance.
 No single algorithm dominates all regimes: BKT-Bandit achieves top-3 in 10/12 configurations with average rank 2.50, while F-UCB delivers the largest gains ($+41.8\%$ over random) at high decay.
-Most strikingly, we discover an \emph{Oracle catastrophe}: a clairvoyant selector with perfect knowledge of the current state finishes last in 9/12 configurations, losing to random selection in 10/12, because greedy exploitation of known states systematically neglects decaying arms.
+Most strikingly, we discover a \emph{Greedy-Min catastrophe}: a myopic selector with perfect knowledge of the current state that always quizzes the weakest topic finishes last in 9/12 configurations, losing to random selection in 10/12, because greedy exploitation of known states systematically neglects decaying arms.
 
 In summary, our contributions are:
 \begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
-  \item \textbf{RMAB formulation.} We formalize educational quizzing as a restless multi-armed bandit with Ebbinghaus forgetting, providing a principled framework that exposes why stationary methods fail.
+  \item \textbf{RMAB formulation.} We extend RMAB-based approaches~\citep{mate2024eduqate,reddy2016unbounded} to a comprehensive quizzing benchmark with Ebbinghaus forgetting dynamics, providing a principled framework that exposes why stationary methods fail.
   \item \textbf{Four novel algorithms.} We introduce F-UCB, BKT-Bandit, Whittle-advantage, and MetaSelector, each targeting different aspects of the forgetting-aware selection problem.
-  \item \textbf{Oracle catastrophe.} We identify and analyze a counterintuitive failure mode: perfect state information leads to worse performance than random selection due to systematic neglect of forgetting dynamics.
+  \item \textbf{Greedy-Min catastrophe.} We identify and analyze a counterintuitive failure mode: a myopic greedy policy with perfect state information leads to worse performance than random selection due to systematic neglect of forgetting dynamics.
   \item \textbf{Comprehensive benchmark.} We evaluate 14 algorithms across 12 synthetic configurations and 2 real datasets (Duolingo: 500 students, 127K interactions; ASSISTments: 500 students, 425K interactions), providing the most extensive comparison of bandit-based question selectors to date.
 \end{enumerate}
