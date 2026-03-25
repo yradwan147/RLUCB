@@ -522,6 +522,82 @@ class ThompsonSelector(BaseSelector):
         return self.attempts.copy()
 
 
+class DiscountedTSSelector(BaseSelector):
+    """
+    Discounted Thompson Sampling for non-stationary bandits.
+
+    Uses a geometric discount factor γ on past observations, so recent
+    outcomes weigh more than old ones. The effective posterior is:
+      α_i = 1 + Σ_{s≤t} γ^{t-s} · correct_{i,s}
+      β_i = 1 + Σ_{s≤t} γ^{t-s} · incorrect_{i,s}
+
+    Implemented via multiplicative decay: after each step, multiply all
+    α and β pseudo-counts by γ, then add the new observation.
+
+    Reference: Raj & Kalyani (2017), "Taming Non-stationary Bandits:
+    A Bayesian Approach" (arXiv:1707.09727).
+    """
+
+    def __init__(
+        self,
+        num_categories: int,
+        discount: float = 0.999,
+        rng: Optional[np.random.Generator] = None,
+    ):
+        self.num_categories = num_categories
+        self.discount = discount
+        self.rng = rng if rng is not None else np.random.default_rng()
+
+        self.alpha = np.ones(num_categories)
+        self.beta_ = np.ones(num_categories)
+        self.attempts = np.zeros(num_categories, dtype=np.int32)
+        self.correct = np.zeros(num_categories, dtype=np.int32)
+        self.total_questions = 0
+
+    def select_category(self) -> int:
+        samples = np.array([
+            self.rng.beta(max(self.alpha[i], 1e-3), max(self.beta_[i], 1e-3))
+            for i in range(self.num_categories)
+        ])
+        # Select weakest (lowest sampled knowledge)
+        return int(np.argmin(samples))
+
+    def update(self, category: int, correct: bool) -> None:
+        # Discount all past observations
+        self.alpha = 1.0 + (self.alpha - 1.0) * self.discount
+        self.beta_ = 1.0 + (self.beta_ - 1.0) * self.discount
+
+        # Add new observation
+        if correct:
+            self.alpha[category] += 1
+            self.correct[category] += 1
+        else:
+            self.beta_[category] += 1
+        self.attempts[category] += 1
+        self.total_questions += 1
+
+    def reset(self) -> None:
+        self.alpha = np.ones(self.num_categories)
+        self.beta_ = np.ones(self.num_categories)
+        self.attempts = np.zeros(self.num_categories, dtype=np.int32)
+        self.correct = np.zeros(self.num_categories, dtype=np.int32)
+        self.total_questions = 0
+
+    def get_statistics(self) -> dict:
+        stats = {}
+        for i in range(self.num_categories):
+            a = int(self.attempts[i])
+            c = int(self.correct[i])
+            stats[f"Category_{i}"] = {
+                "attempts": a, "correct": c, "incorrect": a - c,
+                "correctness_rate": c / a if a > 0 else 0.0,
+            }
+        return stats
+
+    def get_exposure_distribution(self) -> np.ndarray:
+        return self.attempts.copy()
+
+
 class EpsilonGreedySelector(BaseSelector):
     """
     Epsilon-greedy selector.
@@ -1368,6 +1444,11 @@ SELECTOR_REGISTRY = {
         rng=rng,
     ),
     "oracle": lambda cfg, rng: OracleSelector(cfg.num_categories),
+    "discounted_ts": lambda cfg, rng: DiscountedTSSelector(
+        cfg.num_categories,
+        discount=math.exp(-cfg.decay_rate),
+        rng=rng,
+    ),
     "meta": lambda cfg, rng: MetaSelector(
         base_selectors=[
             create_selector("bkt_bandit", cfg, np.random.default_rng(42)),
