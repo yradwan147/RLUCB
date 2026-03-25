@@ -75,8 +75,9 @@ Implements the classical box-based spaced repetition heuristic.
 Topics start in box~1 and advance on correct answers; incorrect answers reset to box~1.
 Lower boxes are reviewed more frequently.
 
-\paragraph{Greedy-Min.\footnote{The Greedy-Min policy selects the category with lowest current knowledge. Despite having access to the true knowledge state, it is myopic---it does not plan ahead or account for future forgetting dynamics.}}
-Has access to the true knowledge vector $\mathbf{k}^{(t)}$ at each step and selects $i^* = \argmin_i \; k_i^{(t)}$---the topic with the lowest current knowledge.
+\paragraph{Greedy-Min.}
+Has access to the true knowledge vector $\mathbf{k}^{(t)}$ at each step and selects $i^* = \argmin_i \; k_i^{(t)}$---the topic with the lowest current knowledge.%
+\footnote{Despite having access to the true knowledge state, Greedy-Min is myopic---it does not plan ahead or account for future forgetting dynamics. It should not be confused with a dynamic-programming-optimal policy.}
 Despite perfect information, this myopic greedy policy does not account for future forgetting.
 
 \subsection{Novel Algorithms}

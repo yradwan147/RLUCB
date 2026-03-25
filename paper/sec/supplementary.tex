@@ -85,6 +85,24 @@ In the first 1{,}000 steps, exploration-heavy algorithms (UCB1, Thompson) lag be
 Between steps 1{,}000--5{,}000, forgetting-aware algorithms (F-UCB, BKT-Bandit) pull ahead as they sustain knowledge through targeted reinforcement.
 Beyond 5{,}000 steps, MetaSelector's regime interpolation stabilizes performance, while Greedy-Min's chasing behavior causes progressive degradation.
 
+\paragraph{Area Under Knowledge Curve (AUC).}
+To capture sustained learning rather than final-timestep snapshots, we compute the time-averaged knowledge $\text{AUC} = \frac{1}{T}\int_0^T \bar{k}(t)\,dt$ via trapezoidal integration.
+At $K{=}6$, $\lambda{=}0.01$, PD-Whittle achieves the highest AUC (0.575), followed by Greedy-Min (0.575) and Whittle (0.574).
+At $K{=}20$, $\lambda{=}0.01$, BKT-Bandit leads with AUC 0.193, followed by F-UCB (0.186).
+AUC rankings largely mirror final-knowledge rankings but reveal that Whittle variants sustain knowledge more consistently in low-decay regimes.
+
+\paragraph{Time-to-mastery.}
+We measure the first timestep where $\min_i k_i(t) \geq 0.50$ (i.e., all categories reach 50\% mastery).
+At $K{=}6$, $\lambda{=}0.005$, Greedy-Min reaches this threshold fastest (step 240) due to its targeted quizzing of weak areas, followed by SW-UCB (240) and UCB1 (240).
+At $K{=}6$, $\lambda{=}0.01$, only four algorithms ever reach 50\% mastery: Greedy-Min (step 457), SW-UCB (497), UCB1 (523), and Whittle (547).
+For $\lambda{=}0.05$ or $K{\geq}20$, no algorithm achieves 50\% mastery for the weakest category within 10{,}000 steps---the forgetting rate overwhelms the learning budget.
+
+\paragraph{Equity--efficiency trade-off.}
+Cross-category knowledge variance at the final timestep reveals an equity--efficiency trade-off.
+Greedy-Min achieves near-zero variance ($<10^{-5}$) but poor average knowledge.
+BKT-Bandit, the strongest average-knowledge algorithm at $K{=}20$, has the \emph{worst} variance---it concentrates on high-value categories at the expense of weaker ones.
+This trade-off suggests that combining BKT-Bandit with equity-aware methods could yield both high average knowledge and balanced learning.
+
 % ============================================================
 \section{Algorithm Pseudocode}
 \label{app:pseudocode}
@@ -152,7 +170,10 @@ BKT-Bandit and PD-Whittle maintain their advantage, and the Greedy-Min catastrop
 \section{Whittle Index Implementation Details}
 \label{app:whittle}
 
-The Whittle advantage index is computed on a discretized state space with $M=50$ bins over $k \in [0.01, 0.99]$. Value iteration uses convergence threshold $10^{-8}$ with maximum 500 iterations. The advantage index $W(k) = V_{\text{mixed}}(k) - V_{\text{passive}}(k)$ uses mixed transition probability $1/K$ to account for the budget constraint. Precomputation takes ${\sim}2$ seconds per configuration; online lookup is $O(1)$ via nearest-state interpolation.
+The Whittle advantage index is computed on a discretized state space with $M=50$ bins over $k \in [0.01, 0.99]$. Value iteration uses convergence threshold $10^{-8}$ with maximum 500 iterations. The advantage index $W(k) = V_{\text{mixed}}(k) - V_{\text{passive}}(k)$ uses mixed transition probability $1/K$ to account for the budget constraint. Precomputation takes ${\sim}0.01$ seconds per configuration at $M{=}50$; online lookup is $O(1)$ via nearest-state interpolation.
+
+\paragraph{Sensitivity to discretization.}
+We tested $M \in \{20, 50, 100, 200\}$ and found that coarser grids ($M{=}20, 50$) produce stable, monotonically decreasing index profiles---high index for low-mastery states, as expected. Finer grids ($M{=}100, 200$) introduce numerical instabilities in the binary-search/value-iteration pipeline, producing non-monotone index profiles. We therefore use $M{=}50$ as the default, which balances approximation quality with numerical stability. All granularities compute in under 0.1 seconds.
 
 % ============================================================
 \section{Extended Limitations}
