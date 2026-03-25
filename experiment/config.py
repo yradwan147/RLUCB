@@ -33,7 +33,8 @@ class ExperimentConfig:
     
     # Forgetting dynamics (Ebbinghaus-inspired)
     base_knowledge: float = 0.10  # minimum retained knowledge after forgetting
-    decay_rate: float = 0.01  # exponential decay rate per timestep
+    decay_rate: float = 0.01  # TRUE exponential decay rate (used by student model)
+    algorithm_decay_rate: Optional[float] = None  # if set, algorithms use this instead of decay_rate (for mis-specification tests)
     
     # Experiment duration
     questions_per_session: int = 200  # total questions per student
@@ -83,6 +84,11 @@ class ExperimentConfig:
         if self.exploration_param < 0:
             raise ValueError("exploration_param must be non-negative")
     
+    @property
+    def selector_decay_rate(self) -> float:
+        """Decay rate for algorithms. Uses algorithm_decay_rate if set, else decay_rate."""
+        return self.algorithm_decay_rate if self.algorithm_decay_rate is not None else self.decay_rate
+
     def get_category_names(self) -> List[str]:
         """Generate category names for use with UCBSelector."""
         return [f"Category_{i}" for i in range(self.num_categories)]

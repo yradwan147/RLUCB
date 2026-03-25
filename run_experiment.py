@@ -183,6 +183,12 @@ def parse_args():
         default=None,
         help="Log metrics every N timesteps (default: auto-set based on questions)",
     )
+    parser.add_argument(
+        "--algorithm-decay-rate",
+        type=float,
+        default=None,
+        help="Decay rate for algorithms (mis-specification test). If set, algorithms use this instead of --decay-rate.",
+    )
 
     return parser.parse_args()
 
@@ -215,6 +221,7 @@ def main():
         incorrect_penalty=args.penalty,
         base_knowledge=args.base_knowledge,
         decay_rate=args.decay_rate,
+        algorithm_decay_rate=args.algorithm_decay_rate,
         questions_per_session=args.questions,
         exploration_param=args.exploration,
         random_seed=args.seed,
