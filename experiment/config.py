@@ -105,6 +105,7 @@ class ExperimentConfig:
             "incorrect_penalty": self.incorrect_penalty,
             "base_knowledge": self.base_knowledge,
             "decay_rate": self.decay_rate,
+            "algorithm_decay_rate": self.algorithm_decay_rate,
             "questions_per_session": self.questions_per_session,
             "exploration_param": self.exploration_param,
             "random_seed": self.random_seed,

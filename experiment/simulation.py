@@ -392,6 +392,7 @@ def run_multiple_experiments(
             incorrect_penalty=config.incorrect_penalty,
             base_knowledge=config.base_knowledge,
             decay_rate=config.decay_rate,
+            algorithm_decay_rate=config.algorithm_decay_rate,
             questions_per_session=config.questions_per_session,
             exploration_param=config.exploration_param,
             random_seed=(config.random_seed or 0) + run_idx * 10000,
