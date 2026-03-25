@@ -103,6 +103,19 @@ Greedy-Min achieves near-zero variance ($<10^{-5}$) but poor average knowledge.
 BKT-Bandit, the strongest average-knowledge algorithm at $K{=}20$, has the \emph{worst} variance---it concentrates on high-value categories at the expense of weaker ones.
 This trade-off suggests that combining BKT-Bandit with equity-aware methods could yield both high average knowledge and balanced learning.
 
+\paragraph{Exposure equity (Gini coefficient).}
+We measure the Gini coefficient of the per-category exposure distribution at the final timestep.
+A Gini of 0 indicates perfectly equal exposure; higher values indicate concentration on fewer categories.
+At $K{=}6$, $\lambda{=}0.01$, all algorithms achieve near-perfect equity (Gini $<0.007$).
+At $K{=}20$, $\lambda{=}0.01$, most algorithms remain equitable (Gini $<0.03$), but BKT-Bandit concentrates heavily on a subset of categories (Gini $= 0.449$, ``very unequal''), confirming its equity--efficiency trade-off.
+MetaSelector exhibits moderate concentration (Gini $= 0.107$), while Whittle variants and Random maintain near-perfect equity (Gini $<0.003$).
+
+\paragraph{F-UCB urgency weight ($\gamma$) sensitivity.}
+We vary the urgency weight $\gamma \in \{0.0, 0.1, 0.3, 0.5, 0.7, 1.0\}$ at $K{=}6$.
+At $\lambda{=}0.01$, performance increases monotonically with $\gamma$: from $\bar{k}{=}0.298$ ($\gamma{=}0$) to $0.587$ ($\gamma{=}1.0$), confirming that urgency is critical.
+At $\lambda{=}0.05$, the relationship is non-monotone: performance peaks at $\gamma{=}0.1$ ($\bar{k}{=}0.241$) and degrades for larger $\gamma$ ($\bar{k}{=}0.143$ at $\gamma{=}1.0$), suggesting that excessive urgency causes thrashing at high decay.
+The default $\gamma{=}0.5$ is a reasonable compromise, but regime-specific tuning could improve results by 10--20\%.
+
 % ============================================================
 \section{Algorithm Pseudocode}
 \label{app:pseudocode}
