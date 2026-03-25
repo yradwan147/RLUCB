@@ -50,6 +50,16 @@ for K in 6 20; do
     done
 done
 
+# ---------------------------------------------------------------
+# C1: LookaheadOracle validation — K=6 × 3 decay × seed=42
+# ---------------------------------------------------------------
+echo "--- C1: LookaheadOracle (3 jobs) ---"
+for DECAY in 0.005 0.01 0.05; do
+    sbatch -J rev_la_k6_d${DECAY}_s42 \
+        slurm/run_experiment.sh 6 $DECAY 42
+    COUNT=$((COUNT + 1))
+done
+
 echo ""
 echo "Submitted $COUNT revision jobs"
 echo "Monitor: squeue -u \$USER"

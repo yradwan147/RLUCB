@@ -9,7 +9,7 @@ from tqdm import tqdm
 from .config import ExperimentConfig
 from .student import Student
 from .selectors import (
-    BaseSelector, RandomSelector, UCBSelectorAdapter, OracleSelector,
+    BaseSelector, RandomSelector, UCBSelectorAdapter, OracleSelector, LookaheadOracleSelector,
     create_selector, SELECTOR_REGISTRY,
 )
 
@@ -502,8 +502,8 @@ class MultiAlgorithmExperiment:
                 sel_rng = np.random.default_rng(sel_seed)
                 sel = create_selector(algo, self.config, rng=sel_rng)
 
-                # Oracle needs knowledge reference
-                if isinstance(sel, OracleSelector):
+                # Oracle and LookaheadOracle need knowledge reference
+                if isinstance(sel, (OracleSelector, LookaheadOracleSelector)):
                     sel.set_knowledge_ref(student.knowledge)
 
                 sels.append(sel)

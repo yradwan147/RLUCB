@@ -882,6 +882,101 @@ class OracleSelector(BaseSelector):
         return self.attempts.copy()
 
 
+class LookaheadOracleSelector(BaseSelector):
+    """
+    2-step lookahead Oracle with perfect state knowledge.
+
+    Unlike the myopic Greedy-Min (which picks argmin k_i), this selector
+    evaluates each category by simulating the expected knowledge state
+    after quizzing it, including forgetting of all other categories.
+
+    For each candidate category i, it computes:
+      E[total_knowledge | quiz i] =
+        k_i * (k_i + α(1-k_i)) + (1-k_i) * (k_i - β*k_i)   [quizzed arm]
+        + Σ_{j≠i} (base + (k_j - base) * exp(-λ))            [decayed arms]
+
+    Then picks the category maximizing expected total knowledge.
+    This separates the effect of myopia from the effect of state observability.
+    """
+
+    def __init__(
+        self,
+        num_categories: int,
+        learning_rate: float = 0.12,
+        incorrect_penalty: float = 0.02,
+        decay_rate: float = 0.01,
+        base_knowledge: float = 0.10,
+    ):
+        self.num_categories = num_categories
+        self.learning_rate = learning_rate
+        self.incorrect_penalty = incorrect_penalty
+        self.decay_rate = decay_rate
+        self.base_knowledge = base_knowledge
+        self._knowledge_ref: Optional[np.ndarray] = None
+        self.attempts = np.zeros(num_categories, dtype=np.int32)
+        self.correct = np.zeros(num_categories, dtype=np.int32)
+        self.total_questions = 0
+
+    def set_knowledge_ref(self, knowledge: np.ndarray) -> None:
+        self._knowledge_ref = knowledge
+
+    def select_category(self) -> int:
+        if self._knowledge_ref is None:
+            return 0
+
+        k = self._knowledge_ref
+        K = self.num_categories
+        decay_factor = math.exp(-self.decay_rate)
+        base = self.base_knowledge
+        best_score = -float('inf')
+        best_cat = 0
+
+        for i in range(K):
+            # Expected knowledge of quizzed category after one step
+            p_correct = k[i]
+            k_correct = k[i] + self.learning_rate * (1 - k[i])
+            k_incorrect = k[i] - self.incorrect_penalty * k[i]
+            expected_ki = p_correct * k_correct + (1 - p_correct) * k_incorrect
+
+            # Sum of decayed knowledge for all OTHER categories
+            decay_sum = 0.0
+            for j in range(K):
+                if j != i:
+                    decay_sum += base + (k[j] - base) * decay_factor
+
+            total = expected_ki + decay_sum
+            if total > best_score:
+                best_score = total
+                best_cat = i
+
+        return best_cat
+
+    def update(self, category: int, correct: bool) -> None:
+        self.attempts[category] += 1
+        if correct:
+            self.correct[category] += 1
+        self.total_questions += 1
+
+    def reset(self) -> None:
+        self.attempts = np.zeros(self.num_categories, dtype=np.int32)
+        self.correct = np.zeros(self.num_categories, dtype=np.int32)
+        self.total_questions = 0
+
+    def get_statistics(self) -> dict:
+        stats = {}
+        for i in range(self.num_categories):
+            a = int(self.attempts[i])
+            c = int(self.correct[i])
+            stats[f"Category_{i}"] = {
+                "attempts": a, "correct": c, "incorrect": a - c,
+                "correctness_rate": c / a if a > 0 else 0.0,
+            }
+        return stats
+
+    def get_exposure_distribution(self) -> np.ndarray:
+        return self.attempts.copy()
+
+
 class WhittleIndexSelector(BaseSelector):
     """
     Whittle Index selector for the education-forgetting restless bandit.
@@ -1444,6 +1539,13 @@ SELECTOR_REGISTRY = {
         rng=rng,
     ),
     "oracle": lambda cfg, rng: OracleSelector(cfg.num_categories),
+    "lookahead_oracle": lambda cfg, rng: LookaheadOracleSelector(
+        cfg.num_categories,
+        learning_rate=cfg.learning_rate,
+        incorrect_penalty=cfg.incorrect_penalty,
+        decay_rate=cfg.decay_rate,  # uses TRUE decay (not selector_decay_rate)
+        base_knowledge=cfg.base_knowledge,
+    ),
     "discounted_ts": lambda cfg, rng: DiscountedTSSelector(
         cfg.num_categories,
         discount=math.exp(-cfg.selector_decay_rate),
