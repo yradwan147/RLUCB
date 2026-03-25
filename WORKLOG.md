@@ -145,10 +145,42 @@ Avg rank 3.2, top-3 in 5/6. Best consistency yet.
 3. meta: 7/12 top-3, 1 win
 4. adaptive_whittle: 2/12 top-3, 2 wins
 
-### What's next
-- Theory: prove regret bounds for unified scoring formula
-- Publication figures: knowledge trajectories, regime heatmaps, scaling plots
-- Paper writing
+---
+
+## Session — 2026-03-25/26: Paper Writing + Stanford Review Revision
+
+### Paper written
+- Full NeurIPS paper: 6 figures, 4 tables, 30 refs, supplementary, checklist
+- Compiles cleanly: 0 errors, 17 pages, 485KB
+
+### Stanford Agentic Reviewer feedback: "lean positive, contingent on clarifications"
+Strengths: RMAB framing, Oracle catastrophe insight, comprehensive benchmark
+Weaknesses: misleading "Oracle" term, missing dTS baseline, no λ sensitivity, only 3 seeds, underspecified replay protocol
+
+### ALL 15 revision tasks completed
+**A1-A7 (paper fixes):** Oracle→Greedy-Min, softened claims, added dTS/Corral/DPPS related work, clarified MetaSelector theory, described replay protocol, Whittle details, BKT Bayesian justification
+**B1:** DiscountedTSSelector implemented (16th algorithm)
+**B2:** λ mis-specification support (algorithm_decay_rate config + CLI + sensitivity SLURM runner)
+**B3:** 7 new seeds ready (42 IBEX jobs for 10-seed statistical power)
+**B4:** AUC, time-to-mastery, equity metrics in supplementary
+**B5:** Whittle discretization sensitivity in supplementary
+**C1:** LookaheadOracleSelector — 2-step lookahead, beats F-UCB at d=0.05 (0.248 vs 0.220). Proves Oracle catastrophe is about myopia, not state info.
+**C2:** Gini coefficient — BKT-Bandit Gini=0.449 at K=20 (very unequal exposure)
+**C3:** F-UCB γ sensitivity — non-monotone at d=0.05 (peaks at γ=0.1), monotone at d=0.01
+
+### Bugs found and fixed during audit
+1. config.py: algorithm_decay_rate missing from to_dict()
+2. simulation.py: run_multiple_experiments() didn't propagate algorithm_decay_rate
+
+### IBEX ready
+`bash slurm/submit_revision.sh` → 56 jobs (6 dTS + 5 λ-sensitivity + 42 seeds + 3 LookaheadOracle)
+
+### What's next (after IBEX results)
+- Integrate dTS + LookaheadOracle into all tables/figures
+- Update with 10-seed mean ± std
+- Add λ sensitivity figure to supplementary
+- Recompile paper
+- Re-submit to Stanford reviewer
 
 ---
 
