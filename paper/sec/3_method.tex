@@ -125,9 +125,11 @@ For arm $i$ with current state $k_i$, the advantage index approximates:
     \label{eq:whittle}
 \end{equation}
 where $V^{\text{active}}$ is the value of quizzing the arm (applying \eqref{eq:learning}) and $V^{\text{passive}}$ is the value of leaving it idle (applying \eqref{eq:forgetting}).
-We solve the single-arm MDP via value iteration with a discretized state space.
+We solve the single-arm MDP via value iteration on a discretized state space ($M{=}50$ bins).
 The arm with the highest advantage index is selected at each step.
-We evaluate two variants: \textbf{PD-Advantage} (probability-dependent) and \textbf{Adapt-Advantage} (adaptive estimation).
+Unlike classical Whittle indices~\citep{whittle1988restless}, which require a Lagrangian relaxation and verified indexability, our advantage index is a heuristic value-difference that does not assume indexability.
+Empirically, the single-arm value function exhibits threshold structure (high advantage for low-knowledge states, low for high-knowledge states), suggesting approximate indexability holds in practice.
+We evaluate two variants: \textbf{PD-Advantage} (with posterior-based knowledge estimation) and \textbf{Adapt-Advantage} (with online decay-rate adaptation).
 
 \paragraph{MetaSelector.}
 MetaSelector maintains a portfolio of $M$ base selectors (BKT-Bandit, F-UCB, Advantage Index, Leitner, and Random in our experiments).

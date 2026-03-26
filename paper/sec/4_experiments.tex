@@ -128,12 +128,12 @@ We validate on two real educational datasets.
 
 \paragraph{Duolingo.}
 We sample 500 students from the Duolingo English learner dataset~\citep{settles2016trainable}, totaling 127K interactions.
-We fit student model parameters via maximum likelihood: $\alpha{=}0.126$, $\beta{=}0.087$, $\lambda{\approx}0$, $k_0{=}0.91$.
+We fit student model parameters via maximum likelihood (NLL${}= 0.285$ per observation): $\alpha{=}0.126$, $\beta{=}0.087$, $\lambda{\approx}0$, $k_0{=}0.91$.
 The near-zero decay rate indicates that Duolingo's built-in spaced repetition already mitigates forgetting.
 
 \paragraph{ASSISTments.}
 We sample 500 students from ASSISTments~\citep{feng2009addressing}, totaling 425K interactions.
-Fitted parameters: $\alpha{=}0.090$, $\beta{=}0.077$, $\lambda{=}0.008$, $k_0{=}0.71$.
+Fitted parameters (NLL${}= 0.575$): $\alpha{=}0.090$, $\beta{=}0.077$, $\lambda{=}0.008$, $k_0{=}0.71$.
 Non-trivial decay ($\lambda{=}0.008$) makes this a more challenging testbed.
 
 \paragraph{Replay protocol.}
