@@ -200,12 +200,32 @@ Weaknesses: misleading "Oracle" term, missing dTS baseline, no λ sensitivity, o
 - 0 LaTeX errors, 0 undefined references, 0 missing figures
 - 16 algorithms benchmarked across 12 synthetic configs + 2 real datasets
 
-### What's next
-- Re-submit to Stanford reviewer for updated score
-- Proofread one more time for any remaining typos
-- Consider adding 10-seed results for K=50,100 if reviewer asks
-- Theory section (regret bounds) if time permits before deadline
-- Final camera-ready formatting
+---
+
+## Session — 2026-03-27: Three Reviews + Theory + Final Polish
+
+### Three reviews analyzed
+- NeurIPS: borderline reject (wants theory + tighter methodology)
+- ICML: revise (wants methodology tightening)
+- ICLR: lean accept 5.2/10 (most favorable, wants clarity fixes)
+- All 3 praise: RMAB framing, Greedy-Min catastrophe, broad experiments
+
+### Theory added (new §3.5 — addresses #1 weakness from ALL 3 reviews)
+- **Theorem 1 (Greedy-Min Catastrophe)**: K > 1 + (α-β)k₀(1-k₀)/(λ(k₀-base))
+  Verified: λ=0.005→K>13.5, λ=0.05→K>2.2 — matches ALL experiments
+- **Theorem 2 (BKT-Bandit Concentration)**: n_eff = 1/(1-exp(-λ)), regret O(K√(T log T))
+  Verified: n_eff saturates at 100.5 for λ=0.01
+- **Theorem 3 (F-UCB Regret)**: O(K√T) via phase-dependent UCB analysis
+- Full proofs in supplementary
+
+### MetaSelector rewritten
+- ONE formula only (unified scoring). UCB-over-experts removed from main.
+- Connected to Optimistic OMD (Orabona §6.10)
+- Evolution moved to supplementary
+
+### Whittle → Advantage Index across all files
+
+### Final paper: 21 pages, 785KB, 0 errors, 3 theorems, 7 figures, 16 algorithms
 
 ---
 
