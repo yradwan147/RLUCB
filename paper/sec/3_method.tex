@@ -1,7 +1,7 @@
 \section{Methodology}
 \label{sec:method}
 
-We formalize the adaptive question selection problem and describe the 14 algorithms evaluated in our study.
+We formalize the adaptive question selection problem and describe the 16 algorithms evaluated in our study.
 
 \subsection{Problem Formulation}
 \label{sec:formulation}
@@ -141,6 +141,7 @@ where the reward signal is the student's average knowledge after acting on exper
 The selected expert's arm recommendation is then executed.
 MetaSelector achieves principled regime interpolation: it automatically shifts weight toward whichever base algorithm performs best in the current $(K, \lambda)$ regime, without requiring prior knowledge of which algorithm to use.
 We explored formal expert aggregation approaches (EXP4, Corral~\citep{agarwal2017corralling}) but found that the partial-observability reward signal---binary correctness rather than knowledge gain---prevented reliable expert tracking.
+MetaSelector uses this formula to score each expert-recommended category directly, without tracking expert performance.
 Its unified scoring combines weakness, decay, and uncertainty:
 \begin{equation}
     s_i^{\text{unified}} = (1 - \mu_i) \cdot e^{-\lambda t_i} + 0.5 \cdot (1 - e^{-\lambda t_i}) + c \cdot \sigma_i.

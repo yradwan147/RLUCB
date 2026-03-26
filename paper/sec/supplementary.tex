@@ -36,7 +36,7 @@ retention floor $k_{\mathrm{base}} = 0.10$,
 UCB exploration constant $c = \sqrt{2} \approx 1.414$.
 Each configuration uses 100 students, each answering 10{,}000 questions.
 Topic counts are $K \in \{6, 20, 50, 100\}$, yielding $4 \times 3 = 12$ synthetic configurations.
-Each configuration is repeated with 3 random seeds; we report mean $\pm$ standard error.
+Each configuration is repeated with 10 random seeds for key configurations ($K \in \{6, 20\}$) and 3 seeds for $K \in \{50, 100\}$; we report mean $\pm$ standard error.
 
 \paragraph{Hardware and runtime.}
 All experiments were run on the KAUST IBEX high-performance computing cluster using the \texttt{batch} partition.
@@ -46,7 +46,7 @@ $K{=}6$ jobs complete in approximately 20 minutes,
 $K{=}20$ in approximately 45 minutes,
 $K{=}50$ in approximately 2 hours,
 and $K{=}100$ in approximately 4 hours per job.
-The total compute budget for all 12 configurations $\times$ 14 algorithms $\times$ 3 seeds = 504 jobs was approximately 800 CPU-hours.
+The total compute budget for all 12 configurations $\times$ 16 algorithms $\times$ 3--10 seeds was approximately 800 CPU-hours.
 
 \paragraph{Software.}
 Experiments were implemented in Python 3.11 using NumPy ($\geq$1.24), SciPy ($\geq$1.11), Matplotlib ($\geq$3.7), Seaborn ($\geq$0.12), and Pandas ($\geq$2.0).
@@ -85,6 +85,8 @@ In the first 1{,}000 steps, exploration-heavy algorithms (UCB1, Thompson) lag be
 Between steps 1{,}000--5{,}000, forgetting-aware algorithms (F-UCB, BKT-Bandit) pull ahead as they sustain knowledge through targeted reinforcement.
 Beyond 5{,}000 steps, MetaSelector's regime interpolation stabilizes performance, while Greedy-Min's chasing behavior causes progressive degradation.
 
+\begin{figure}[h]\centering\includegraphics[width=0.95\textwidth]{fig_temporal.png}\caption{Temporal dynamics at $K{=}20$, $\lambda{=}0.01$. Left: average knowledge. Right: weakest category knowledge. BKT-Bandit (green) overtakes Random early and maintains advantage.}\label{fig:temporal}\end{figure}
+
 \paragraph{Area Under Knowledge Curve (AUC).}
 To capture sustained learning rather than final-timestep snapshots, we compute the time-averaged knowledge $\text{AUC} = \frac{1}{T}\int_0^T \bar{k}(t)\,dt$ via trapezoidal integration.
 At $K{=}6$, $\lambda{=}0.01$, PD-Whittle achieves the highest AUC (0.575), followed by Greedy-Min (0.575) and Whittle (0.574).
@@ -115,6 +117,9 @@ We vary the urgency weight $\gamma \in \{0.0, 0.1, 0.3, 0.5, 0.7, 1.0\}$ at $K{=
 At $\lambda{=}0.01$, performance increases monotonically with $\gamma$: from $\bar{k}{=}0.298$ ($\gamma{=}0$) to $0.587$ ($\gamma{=}1.0$), confirming that urgency is critical.
 At $\lambda{=}0.05$, the relationship is non-monotone: performance peaks at $\gamma{=}0.1$ ($\bar{k}{=}0.241$) and degrades for larger $\gamma$ ($\bar{k}{=}0.143$ at $\gamma{=}1.0$), suggesting that excessive urgency causes thrashing at high decay.
 The default $\gamma{=}0.5$ is a reasonable compromise, but regime-specific tuning could improve results by 10--20\%.
+
+\paragraph{Sensitivity to $\lambda$ mis-specification.}
+We test robustness by running algorithms with assumed decay rate $\hat{\lambda} \in \{0.5\lambda, 0.8\lambda, \lambda, 1.2\lambda, 2\lambda\}$ while the true rate remains $\lambda{=}0.01$ ($K{=}6$). BKT-Bandit is remarkably robust: its maximum degradation is only $0.0007$ (at $0.5\lambda$), and it actually \emph{improves} slightly when $\hat{\lambda} > \lambda$. MetaSelector degrades by at most $0.004$. F-UCB is the most sensitive ($-0.009$ at $0.5\lambda$) but still beats Random across the full $0.5\times$--$2\times$ range. No algorithm fails catastrophically under mis-specification, though F-UCB users should prefer slight overestimates of $\lambda$.
 
 % ============================================================
 \section{Algorithm Pseudocode}

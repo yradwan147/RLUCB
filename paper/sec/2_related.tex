@@ -36,6 +36,7 @@ Our framework subsumes Leitner-style scheduling as a baseline while adding princ
 \paragraph{Discounted and Non-Stationary Thompson Sampling.}
 \citet{raj2017taming} proposed discounted Thompson Sampling (dTS), which geometrically discounts past observations to handle non-stationary bandits, shrinking the posterior toward the prior at each timestep.
 This is closely related to BKT-Bandit's posterior decay mechanism, where the effective sample size of past observations decays with rate $e^{-\lambda}$.
+We include discounted TS as a baseline and find it performs at the level of standard Thompson Sampling, suggesting that naive discounting without structural knowledge of the forgetting model provides limited benefit.
 In the expert aggregation setting, EXP4~\citep{lattimore2020bandit} and Corral~\citep{agarwal2017corralling} provide formal regret guarantees for combining multiple bandit algorithms.
 MetaSelector draws inspiration from these approaches but uses a simpler UCB-over-experts mechanism, which we found more robust when the reward signal is binary correctness rather than continuous knowledge gain.
 

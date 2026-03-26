@@ -1,9 +1,10 @@
 \begin{abstract}
 Adaptive question selection in educational systems is fundamentally limited by \emph{forgetting}: knowledge decays over time for topics that are not reinforced, rendering static selection policies suboptimal.
-We present a comprehensive study of 14 bandit algorithms for adaptive question selection under Ebbinghaus forgetting dynamics, framing the problem as a restless multi-armed bandit (RMAB).
+We present a comprehensive study of 16 bandit algorithms for adaptive question selection under Ebbinghaus forgetting dynamics, framing the problem as a restless multi-armed bandit (RMAB).
 We introduce four novel algorithms---Forgetting-UCB (F-UCB), which augments exploration bonuses with decay-aware urgency; BKT-Bandit, which maintains Bayesian posteriors with integrated forgetting; Whittle-advantage, which computes budget-aware indices via MDP value differences; and MetaSelector, a UCB-over-experts approach that interpolates across regimes online.
 We extend RMAB-based approaches to a comprehensive quizzing benchmark with Ebbinghaus forgetting dynamics and identify the \emph{Greedy-Min catastrophe}: a myopic greedy selector that always quizzes the lowest-knowledge topic loses to random selection in 10 out of 12 configurations due to systematic neglect of forgetting arms.
-Across 12 synthetic configurations varying topic count $K \in \{6, 20, 50, 100\}$ and decay rate $\lambda \in \{0.005, 0.01, 0.05\}$, BKT-Bandit achieves top-3 performance in 10/12 settings with $+8.2\%$ average improvement over random, F-UCB delivers up to $+41.8\%$ improvement at high decay, and MetaSelector ranks in the top-5 in 11/12 configurations with principled regime interpolation.
+A Lookahead Oracle with one-step planning recovers strong performance, confirming that myopia---not perfect state access---is the root cause of the catastrophe.
+Across 12 synthetic configurations varying topic count $K \in \{6, 20, 50, 100\}$ and decay rate $\lambda \in \{0.005, 0.01, 0.05\}$, BKT-Bandit achieves top-3 performance in 10/12 settings with $+8.2\%$ average improvement over random, F-UCB delivers up to $+42\%$ improvement at high decay, and MetaSelector ranks in the top-5 in 11/12 configurations with principled regime interpolation.
 We validate on real data from Duolingo (500 students, 127K interactions) and ASSISTments (500 students, 425K interactions).
 Code and data are publicly available.
 \end{abstract}
