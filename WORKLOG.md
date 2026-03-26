@@ -225,7 +225,17 @@ Weaknesses: misleading "Oracle" term, missing dTS baseline, no λ sensitivity, o
 
 ### Whittle → Advantage Index across all files
 
-### Final paper: 21 pages, 785KB, 0 errors, 3 theorems, 7 figures, 16 algorithms
+### ICML-focused polish
+- Added indexability discussion for Advantage Index (threshold structure, heuristic vs classical Whittle)
+- Added fitted NLL values (Duolingo 0.285, ASSISTments 0.575) for model quality transparency
+- Verified all Lookahead Oracle numbers match data exactly across all seeds
+- Assessed paper vs top NeurIPS/ICML 2024 papers:
+  - Strongest: empirical breadth (9/10), key insight (9/10), reproducibility (9/10)
+  - Adequate: theory (5→7/10 after theorems), algorithmic novelty (7/10)
+  - Weakest: theory depth vs pure-theory papers (no matching lower bounds)
+  - Best fit: ICLR (values empirical findings) > ICML (wants tighter methodology) > NeurIPS (wants deep theory)
+
+### Final paper: 21 pages, 786KB, 0 errors, 3 theorems, 7 figures, 16 algorithms
 
 ---
 
