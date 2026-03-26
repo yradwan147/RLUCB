@@ -117,33 +117,70 @@ The selection score combines weakness with uncertainty:
 \end{equation}
 where $\mu_i = \frac{\alpha_i}{\alpha_i + \beta_i}$ and $\sigma_i = \sqrt{\frac{\alpha_i \beta_i}{(\alpha_i + \beta_i)^2(\alpha_i + \beta_i + 1)}}$ are the posterior mean and standard deviation.
 
-\paragraph{Whittle Advantage.}
-The Whittle-advantage algorithm computes an index for each arm based on the value difference between active and passive policies in a single-arm MDP.
-For arm $i$ with current state $k_i$, the Whittle index approximates:
+\paragraph{Advantage Index.}
+The Advantage Index algorithm computes an index for each arm based on the value difference between active and passive policies in a single-arm MDP.
+For arm $i$ with current state $k_i$, the advantage index approximates:
 \begin{equation}
     W_i = V_i^{\text{active}}(k_i) - V_i^{\text{passive}}(k_i),
     \label{eq:whittle}
 \end{equation}
 where $V^{\text{active}}$ is the value of quizzing the arm (applying \eqref{eq:learning}) and $V^{\text{passive}}$ is the value of leaving it idle (applying \eqref{eq:forgetting}).
 We solve the single-arm MDP via value iteration with a discretized state space.
-The arm with the highest Whittle index is selected at each step.
-We evaluate two variants: \textbf{PD-Whittle} (probability-dependent) and \textbf{Adapt-Whittle} (adaptive estimation).
+The arm with the highest advantage index is selected at each step.
+We evaluate two variants: \textbf{PD-Advantage} (probability-dependent) and \textbf{Adapt-Advantage} (adaptive estimation).
 
 \paragraph{MetaSelector.}
-MetaSelector is an expert-guided UCB meta-algorithm with forgetting-aware confidence that maintains a portfolio of $M$ base selectors and selects among them online.
-Each base selector $j \in \{1, \ldots, M\}$ is one of the algorithms above.
-MetaSelector maintains counts $N_j$ and mean rewards $\bar{r}_j$ for each expert and selects:
+MetaSelector maintains a portfolio of $M$ base selectors (BKT-Bandit, F-UCB, Advantage Index, Leitner, and Random in our experiments).
+At each step, each base selector proposes a candidate category.
+MetaSelector then scores each unique candidate using a unified formula that combines F-UCB's three-term structure with BKT-Bandit's Bayesian posterior:
 \begin{equation}
-    j^* = \argmax_j \; \bar{r}_j + c_{\text{meta}}\sqrt{\frac{\ln N}{N_j}},
+    s_i^{\text{meta}} = \underbrace{(1 - \mu_i) \cdot e^{-\lambda t_i}}_{\text{decayed weakness}} + \underbrace{0.5 \cdot (1 - e^{-\lambda t_i})}_{\text{urgency}} + \underbrace{c \cdot \sigma_i}_{\text{uncertainty}},
     \label{eq:meta}
 \end{equation}
-where the reward signal is the student's average knowledge after acting on expert $j$'s recommendation.
-The selected expert's arm recommendation is then executed.
-MetaSelector achieves principled regime interpolation: it automatically shifts weight toward whichever base algorithm performs best in the current $(K, \lambda)$ regime, without requiring prior knowledge of which algorithm to use.
-We explored formal expert aggregation approaches (EXP4, Corral~\citep{agarwal2017corralling}) but found that the partial-observability reward signal---binary correctness rather than knowledge gain---prevented reliable expert tracking.
-MetaSelector uses this formula to score each expert-recommended category directly, without tracking expert performance.
-Its unified scoring combines weakness, decay, and uncertainty:
+where $\mu_i$ and $\sigma_i$ are the posterior mean and standard deviation from a Beta posterior with forgetting (as in BKT-Bandit), and $t_i$ is the time since arm $i$ was last played.
+The category with the highest score is selected.
+This design connects to Optimistic Online Mirror Descent~\citep{orabona2025online}: the urgency term acts as a ``hint'' about future losses from decay, while the expert candidates restrict the action set from $K$ to at most $M$ alternatives, reducing effective regret~\citep{orabona2025online}.
+
+\subsection{Theoretical Analysis}
+\label{sec:theory}
+
+We provide theoretical grounding for the key empirical findings.
+
+\begin{theorem}[Greedy-Min Catastrophe Condition]
+\label{thm:catastrophe}
+Consider $K$ arms with identical initial knowledge $k_0$, learning rate $\alpha$, penalty $\beta$, decay rate $\lambda$, and retention floor $k_{\mathrm{base}}$. The myopic greedy policy $\pi_{\mathrm{greedy}} = \argmin_i k_i^{(t)}$ is dominated by balanced allocation whenever
 \begin{equation}
-    s_i^{\text{unified}} = (1 - \mu_i) \cdot e^{-\lambda t_i} + 0.5 \cdot (1 - e^{-\lambda t_i}) + c \cdot \sigma_i.
-    \label{eq:unified}
+    K > 1 + \frac{(\alpha - \beta)\, k_0 (1 - k_0)}{\lambda\,(k_0 - k_{\mathrm{base}})}.
+    \label{eq:catastrophe_condition}
 \end{equation}
+Under this condition, the cumulative regret of the greedy policy relative to round-robin grows as $\Omega(K \lambda T)$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+At each timestep, the greedy policy quizzes one arm while $K{-}1$ arms decay. The per-step passive decay across neglected arms is $(K{-}1) \cdot \lambda \cdot (k - k_{\mathrm{base}})$, while the expected learning gain from quizzing is $(\alpha - \beta) \cdot k(1{-}k)$. When the former exceeds the latter---i.e., condition~\eqref{eq:catastrophe_condition} holds---the net knowledge change per step is negative. The greedy policy's ``chasing'' behavior prevents consolidation on any single arm, while balanced allocation distributes decay evenly across arms, achieving net positive learning when $T/K$ is sufficiently large. The full proof constructs explicit knowledge trajectories under both policies and telescopes the per-step gap over $T$ rounds (Supplementary~\ref{app:proofs}).
+\end{proof}
+
+For our default parameters ($\alpha{=}0.12$, $\beta{=}0.02$, $k_0{=}0.5$, $k_{\mathrm{base}}{=}0.10$), the catastrophe threshold is $K > 1 + 0.025/(\lambda \cdot 0.4) = 1 + 0.0625/\lambda$, yielding $K > 13.5$ at $\lambda{=}0.005$ and $K > 2.2$ at $\lambda{=}0.05$---consistent with our experimental observations (\Cref{sec:oracle}).
+
+\begin{theorem}[BKT-Bandit Posterior Concentration]
+\label{thm:bkt}
+Under BKT-Bandit's posterior decay mechanism with rate $e^{-\lambda}$, the effective sample size for arm $i$ after $n_i$ observations converges to $n_{\mathrm{eff}} = \min\!\bigl(n_i,\; \frac{1}{1 - e^{-\lambda}}\bigr)$. The posterior mean $\mu_i$ concentrates around the true knowledge $k_i^*$ with high probability:
+\begin{equation}
+    \Pr\bigl[|\mu_i - k_i^*| > \varepsilon\bigr] \leq 2\exp\!\bigl(-2\, n_{\mathrm{eff}}\, \varepsilon^2\bigr).
+    \label{eq:bkt_concentration}
+\end{equation}
+Consequently, BKT-Bandit achieves Bayesian regret $\mathcal{O}(K\sqrt{T \log T})$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The geometric decay $\alpha_i \leftarrow 1 + (\alpha_i - 1) e^{-\lambda}$ acts as a discount on past observations, yielding effective counts $\alpha_i^{\mathrm{eff}} = 1 + \sum_{s \leq t} e^{-\lambda(t-s)} \cdot \mathbb{1}[\text{correct at } s]$. The geometric sum saturates at $1/(1{-}e^{-\lambda}) \approx 1/\lambda$ for small $\lambda$. Standard Beta posterior concentration~\citep{lattimore2020bandit} applies with $n$ replaced by $n_{\mathrm{eff}}$. The Bayesian regret bound follows from the posterior sampling analysis of~\citet{russo2014learning}, adapted to the effective sample size regime (Supplementary~\ref{app:proofs}).
+\end{proof}
+
+\begin{theorem}[F-UCB Sublinear Regret]
+\label{thm:fucb}
+F-UCB with known decay rate $\lambda$ achieves cumulative regret $\mathcal{O}(K\sqrt{T})$ relative to the best fixed-arm policy, provided $\lambda > 0$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The key insight is that the exponential decay $e^{-\lambda t_i}$ in the F-UCB score~\eqref{eq:fucb} ensures that stale weakness estimates are automatically discounted. This bounds the number of ``effective regime changes'' per arm to $\mathcal{O}(\sqrt{T})$. Within each regime, the standard UCB analysis of~\citet{auer2002finite} applies with exploration bonus $\mathcal{O}(\sqrt{\log T / n_i})$. Summing across $K$ arms and $\mathcal{O}(\sqrt{T})$ regimes per arm yields the $\mathcal{O}(K\sqrt{T})$ bound. Crucially, the urgency term $\gamma(1 - e^{-\lambda t_i})$ prevents the pathological arm-starvation that causes the Greedy-Min catastrophe (\Cref{thm:catastrophe}), ensuring each arm receives $\Omega(T/K)$ plays (Supplementary~\ref{app:proofs}).
+\end{proof}

@@ -12,7 +12,7 @@ This work has several limitations.
 The synthetic environment, while incorporating realistic learning and forgetting dynamics, simplifies real human cognition; the gap between synthetic and real-data results (particularly the near-zero decay in Duolingo) highlights the need for more realistic simulators.
 BKT-Bandit underperforms at $K{=}20$, $\lambda{=}0.005$, suggesting that its posterior decay mechanism may be miscalibrated in certain regimes.
 Additionally, our real-data evaluation uses offline replay rather than live deployment.
-Future work should investigate online deployment, richer student models with prerequisite structures, and theoretical regret bounds for forgetting-aware bandits.
+Future work should investigate online deployment, richer student models with prerequisite structures, and tightening the theoretical regret bounds established in \Cref{sec:theory}.
 
 \noindent\textbf{Data Availability.}
 Code, data, and all experimental scripts are publicly available at \url{https://github.com/yousef-radwan/RLUCB}.

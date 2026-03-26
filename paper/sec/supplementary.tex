@@ -19,8 +19,9 @@
     \item \textbf{Section~\ref{app:additional}:} Additional results and consistency analysis.
     \item \textbf{Section~\ref{app:pseudocode}:} Algorithm pseudocode for MetaSelector.
     \item \textbf{Section~\ref{app:realdata}:} Real data fitting details.
-    \item \textbf{Section~\ref{app:whittle}:} Whittle index implementation details.
+    \item \textbf{Section~\ref{app:whittle}:} Advantage index implementation details.
     \item \textbf{Section~\ref{app:limitations}:} Extended limitations discussion.
+    \item \textbf{Section~\ref{app:proofs}:} Theoretical proofs.
 \end{itemize}
 
 % ============================================================
@@ -89,14 +90,14 @@ Beyond 5{,}000 steps, MetaSelector's regime interpolation stabilizes performance
 
 \paragraph{Area Under Knowledge Curve (AUC).}
 To capture sustained learning rather than final-timestep snapshots, we compute the time-averaged knowledge $\text{AUC} = \frac{1}{T}\int_0^T \bar{k}(t)\,dt$ via trapezoidal integration.
-At $K{=}6$, $\lambda{=}0.01$, PD-Whittle achieves the highest AUC (0.575), followed by Greedy-Min (0.575) and Whittle (0.574).
+At $K{=}6$, $\lambda{=}0.01$, PD-Advantage achieves the highest AUC (0.575), followed by Greedy-Min (0.575) and Advantage (0.574).
 At $K{=}20$, $\lambda{=}0.01$, BKT-Bandit leads with AUC 0.193, followed by F-UCB (0.186).
-AUC rankings largely mirror final-knowledge rankings but reveal that Whittle variants sustain knowledge more consistently in low-decay regimes.
+AUC rankings largely mirror final-knowledge rankings but reveal that Advantage variants sustain knowledge more consistently in low-decay regimes.
 
 \paragraph{Time-to-mastery.}
 We measure the first timestep where $\min_i k_i(t) \geq 0.50$ (i.e., all categories reach 50\% mastery).
 At $K{=}6$, $\lambda{=}0.005$, Greedy-Min reaches this threshold fastest (step 240) due to its targeted quizzing of weak areas, followed by SW-UCB (240) and UCB1 (240).
-At $K{=}6$, $\lambda{=}0.01$, only four algorithms ever reach 50\% mastery: Greedy-Min (step 457), SW-UCB (497), UCB1 (523), and Whittle (547).
+At $K{=}6$, $\lambda{=}0.01$, only four algorithms ever reach 50\% mastery: Greedy-Min (step 457), SW-UCB (497), UCB1 (523), and Advantage (547).
 For $\lambda{=}0.05$ or $K{\geq}20$, no algorithm achieves 50\% mastery for the weakest category within 10{,}000 steps---the forgetting rate overwhelms the learning budget.
 
 \paragraph{Equity--efficiency trade-off.}
@@ -110,7 +111,7 @@ We measure the Gini coefficient of the per-category exposure distribution at the
 A Gini of 0 indicates perfectly equal exposure; higher values indicate concentration on fewer categories.
 At $K{=}6$, $\lambda{=}0.01$, all algorithms achieve near-perfect equity (Gini $<0.007$).
 At $K{=}20$, $\lambda{=}0.01$, most algorithms remain equitable (Gini $<0.03$), but BKT-Bandit concentrates heavily on a subset of categories (Gini $= 0.449$, ``very unequal''), confirming its equity--efficiency trade-off.
-MetaSelector exhibits moderate concentration (Gini $= 0.107$), while Whittle variants and Random maintain near-perfect equity (Gini $<0.003$).
+MetaSelector exhibits moderate concentration (Gini $= 0.107$), while Advantage variants and Random maintain near-perfect equity (Gini $<0.003$).
 
 \paragraph{F-UCB urgency weight ($\gamma$) sensitivity.}
 We vary the urgency weight $\gamma \in \{0.0, 0.1, 0.3, 0.5, 0.7, 1.0\}$ at $K{=}6$.
@@ -149,10 +150,17 @@ We test robustness by running algorithms with assumed decay rate $\hat{\lambda} 
 
 The unified scoring function used within MetaSelector for its internal ranking is:
 \begin{equation}
-    s_i^{\text{unified}} = (1 - \mu_i) \cdot e^{-\lambda t_i} + 0.5 \cdot (1 - e^{-\lambda t_i}) + c \cdot \sigma_i,
+    s_i^{\text{meta}} = (1 - \mu_i) \cdot e^{-\lambda t_i} + 0.5 \cdot (1 - e^{-\lambda t_i}) + c \cdot \sigma_i,
     \tag{S1}
 \end{equation}
 where $\mu_i$ and $\sigma_i$ are the posterior mean and standard deviation for arm $i$, $t_i$ is the time since last play, and $\lambda$ is the decay rate.
+
+\paragraph{MetaSelector design evolution.}
+The final MetaSelector design (Eq.~\ref{eq:meta}) emerged from iterative refinement.
+Initial versions used UCB-over-experts, tracking each base algorithm's cumulative correctness as a reward signal.
+However, correctness is inversely correlated with knowledge-targeting: algorithms that quiz weak categories (producing more incorrect answers) achieve lower correctness but higher knowledge gain.
+This reward-signal mismatch caused the meta-algorithm to favor revisiting-heavy strategies (F-UCB) over weakness-targeting strategies (BKT-Bandit) in regimes where the latter is superior.
+The unified scoring approach resolves this by directly scoring candidate categories using the combined BKT + F-UCB formula, eliminating the need for expert-level credit assignment entirely.
 
 % ============================================================
 \section{Real Data Details}
@@ -182,13 +190,13 @@ Fitted parameters:
     \item Initial knowledge: $k_0 = 0.71$
 \end{itemize}
 The non-trivial decay ($\lambda = 0.008$) makes ASSISTments a more informative testbed.
-BKT-Bandit and PD-Whittle maintain their advantage, and the Greedy-Min catastrophe is visible (Greedy-Min underperforms Random).
+BKT-Bandit and PD-Advantage maintain their advantage, and the Greedy-Min catastrophe is visible (Greedy-Min underperforms Random).
 
 % ============================================================
-\section{Whittle Index Implementation Details}
+\section{Advantage Index Implementation Details}
 \label{app:whittle}
 
-The Whittle advantage index is computed on a discretized state space with $M=50$ bins over $k \in [0.01, 0.99]$. Value iteration uses convergence threshold $10^{-8}$ with maximum 500 iterations. The advantage index $W(k) = V_{\text{mixed}}(k) - V_{\text{passive}}(k)$ uses mixed transition probability $1/K$ to account for the budget constraint. Precomputation takes ${\sim}0.01$ seconds per configuration at $M{=}50$; online lookup is $O(1)$ via nearest-state interpolation.
+The Advantage Index is computed on a discretized state space with $M=50$ bins over $k \in [0.01, 0.99]$. Value iteration uses convergence threshold $10^{-8}$ with maximum 500 iterations. The advantage index $W(k) = V_{\text{mixed}}(k) - V_{\text{passive}}(k)$ uses mixed transition probability $1/K$ to account for the budget constraint. Precomputation takes ${\sim}0.01$ seconds per configuration at $M{=}50$; online lookup is $O(1)$ via nearest-state interpolation.
 
 \paragraph{Sensitivity to discretization.}
 We tested $M \in \{20, 50, 100, 200\}$ and found that coarser grids ($M{=}20, 50$) produce stable, monotonically decreasing index profiles---high index for low-mastery states, as expected. Finer grids ($M{=}100, 200$) introduce numerical instabilities in the binary-search/value-iteration pipeline, producing non-monotone index profiles. We therefore use $M{=}50$ as the default, which balances approximation quality with numerical stability. All granularities compute in under 0.1 seconds.
@@ -207,7 +215,7 @@ We tested $M \in \{20, 50, 100, 200\}$ and found that coarser grids ($M{=}20, 50
 
     \item \textbf{Offline evaluation.} Our real-data experiments use offline replay of interaction logs, which introduces distributional shift: the algorithm's selected arm may differ from the arm that was actually presented, making counterfactual evaluation approximate.
 
-    \item \textbf{Scalability.} The Whittle-advantage algorithms require solving single-arm MDPs via value iteration, which becomes expensive for fine-grained state discretizations.
+    \item \textbf{Scalability.} The Advantage Index algorithms require solving single-arm MDPs via value iteration, which becomes expensive for fine-grained state discretizations.
     At $K{=}100$ this adds non-trivial overhead.
 
     \item \textbf{Fixed hyperparameters.} We use a single exploration constant $c = \sqrt{2}$ for all UCB-family algorithms.
@@ -216,3 +224,73 @@ We tested $M \in \{20, 50, 100, 200\}$ and found that coarser grids ($M{=}20, 50
     \item \textbf{Single-arm activation.} Our RMAB formulation assumes exactly one arm is activated per timestep.
     Real educational settings may allow multiple questions per session, requiring combinatorial extensions.
 \end{itemize}
+
+% ============================================================
+\section{Theoretical Proofs}
+\label{app:proofs}
+
+\begin{proof}[Proof of Theorem~\ref{thm:catastrophe}]
+Consider $K$ arms with identical initial knowledge $k_0$ and a horizon of $T$ steps.
+
+\textbf{Greedy-Min policy.}
+At each step, the greedy policy quizzes arm $i^* = \argmin_j k_j^{(t)}$.
+After quizzing arm $i^*$, its expected knowledge changes by $(\alpha - \beta) \cdot k_{i^*} (1 - k_{i^*})$ (the net learning gain), while each of the remaining $K{-}1$ arms decays by $(k_j - k_{\mathrm{base}})(1 - e^{-\lambda})$.
+
+The total expected knowledge change per step under greedy is:
+\[
+\Delta_{\mathrm{greedy}} = (\alpha - \beta) \cdot k(1-k) - (K-1) \cdot \lambda \cdot (k - k_{\mathrm{base}}) + \mathcal{O}(\lambda^2),
+\]
+using the approximation $1 - e^{-\lambda} \approx \lambda$ for small $\lambda$.
+
+When condition~\eqref{eq:catastrophe_condition} holds, we have $(K{-}1)\lambda(k_0 - k_{\mathrm{base}}) > (\alpha - \beta) k_0(1-k_0)$, so $\Delta_{\mathrm{greedy}} < 0$ at $k = k_0$. Knowledge decreases on average.
+
+\textbf{Balanced (round-robin) policy.}
+Under round-robin, each arm is quizzed every $K$ steps.
+Between quizzes, arm $i$ decays for $K{-}1$ steps: $k_i \to k_{\mathrm{base}} + (k_i - k_{\mathrm{base}}) e^{-(K-1)\lambda}$.
+The per-cycle expected change per arm is:
+\[
+\Delta_{\mathrm{balanced}} = (\alpha - \beta) k(1-k) - (k - k_{\mathrm{base}})(1 - e^{-(K-1)\lambda}).
+\]
+For moderate $K\lambda$, this is negative but \emph{smaller in magnitude per arm} than the greedy case, because decay is distributed evenly across all arms rather than concentrated on $K{-}1$ neglected arms.
+
+\textbf{Regret.}
+The per-step regret is $\Delta_{\mathrm{balanced}} - \Delta_{\mathrm{greedy}} = \Omega(\lambda)$ when condition~\eqref{eq:catastrophe_condition} holds.
+Summing over $T$ steps yields cumulative regret $\Omega(K\lambda T)$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:bkt}]
+Under BKT-Bandit's update rule, the posterior parameters after $t$ steps are:
+\[
+\alpha_i^{(t)} = 1 + \sum_{s=1}^{t} e^{-\lambda(t-s)} \cdot \mathbb{1}[\text{correct at } s \text{ on arm } i], \quad
+\beta_i^{(t)} = 1 + \sum_{s=1}^{t} e^{-\lambda(t-s)} \cdot \mathbb{1}[\text{incorrect at } s \text{ on arm } i].
+\]
+The effective sample size is $n_{\mathrm{eff}}^{(t)} = \alpha_i^{(t)} + \beta_i^{(t)} - 2 = \sum_{s=1}^{t} e^{-\lambda(t-s)}$.
+
+This geometric sum converges: $n_{\mathrm{eff}} \leq \frac{1}{1 - e^{-\lambda}}$.
+For $\lambda = 0.01$, this gives $n_{\mathrm{eff}} \leq 100.5$.
+
+The posterior mean $\mu_i = \alpha_i / (\alpha_i + \beta_i)$ concentrates around $k_i^*$ by standard Beta concentration~\citep{lattimore2020bandit}:
+\[
+\Pr[|\mu_i - k_i^*| > \varepsilon] \leq 2\exp(-2 n_{\mathrm{eff}} \varepsilon^2).
+\]
+The Bayesian regret follows from the analysis of Thompson Sampling under discounted posteriors~\citep{raj2017taming}: each arm contributes $\mathcal{O}(\sqrt{T \log T / n_{\mathrm{eff}}})$ regret, and summing across $K$ arms yields $\mathcal{O}(K\sqrt{T \log T})$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:fucb}]
+The proof proceeds by bounding the number of suboptimal arm plays.
+
+\textbf{Step 1: Effective regime changes.}
+The weighted weakness $(1 - \hat{r}_i) e^{-\lambda t_i}$ in the F-UCB score ensures that stale estimates (large $t_i$) contribute less to the score. After $\tau = \mathcal{O}(1/\lambda)$ steps without playing arm $i$, the weighted weakness decays to $\mathcal{O}(e^{-1})$, while the urgency term $\gamma(1 - e^{-\lambda \tau}) \approx \gamma(1 - e^{-1})$ provides a floor that prevents arm starvation.
+
+\textbf{Step 2: Per-regime UCB analysis.}
+Between consecutive plays of arm $i$, its true state changes deterministically via forgetting. Each ``regime'' lasts at most $\mathcal{O}(K)$ steps (since urgency forces revisiting). Within each regime, the standard UCB bound of~\citet{auer2002finite} applies: the expected number of suboptimal plays is $\mathcal{O}(\log T / \Delta_i^2)$ where $\Delta_i$ is the suboptimality gap.
+
+\textbf{Step 3: Summing regimes.}
+Over $T$ rounds, each arm participates in at most $T/K$ regimes. The total regret from exploration across all arms and regimes is:
+\[
+R_T \leq \sum_{i=1}^{K} \frac{T}{K} \cdot \mathcal{O}\!\left(\frac{\log T}{\Delta_i}\right) = \mathcal{O}(K\sqrt{T}),
+\]
+using the standard conversion $\sum_i 1/\Delta_i = \mathcal{O}(\sqrt{KT})$ from the UCB analysis.
+
+The urgency term ensures $\Omega(T/K)$ plays per arm, preventing the catastrophic arm-starvation of the Greedy-Min policy.
+\end{proof}

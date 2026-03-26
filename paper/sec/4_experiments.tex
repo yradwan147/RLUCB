@@ -14,7 +14,7 @@ Student model parameters are $\alpha = 0.12$, $\beta = 0.02$, $k_{\mathrm{base}}
 The evaluation metric is \textbf{final mean knowledge} $\bar{k}^{(T)} = \frac{1}{K}\sum_{i=1}^{K} k_i^{(T)}$, averaged across students and seeds.
 
 \paragraph{Algorithms.}
-We compare 16 algorithms: Random, UCB1, Thompson Sampling, $\varepsilon$-Greedy, SW-UCB, Leitner, Greedy-Min, F-UCB, BKT-Bandit, PD-Whittle, Adapt-Whittle, Whittle (basic), MetaSelector, Decay-UCB, Discounted TS, and Lookahead Oracle.
+We compare 16 algorithms: Random, UCB1, Thompson Sampling, $\varepsilon$-Greedy, SW-UCB, Leitner, Greedy-Min, F-UCB, BKT-Bandit, PD-Advantage, Adapt-Advantage, Advantage (basic), MetaSelector, Discounted TS, and Lookahead Oracle.
 
 \subsection{Main Results: $K{=}6$}
 \label{sec:main_results}
@@ -32,8 +32,8 @@ Results averaged over 100 students and 10 seeds.}
 
 At low decay ($\lambda{=}0.005$), the problem is easy and most algorithms cluster near $\bar{k} \approx 0.785$.
 Greedy-Min achieves the best score (0.790), but its advantage is marginal.
-At moderate decay ($\lambda{=}0.01$), differences emerge: Greedy-Min still leads (0.584), but MetaSelector (0.582) and PD-Whittle (0.582) are within one standard error.
-BKT-Bandit (0.581) and basic Whittle (0.580) closely follow.
+At moderate decay ($\lambda{=}0.01$), differences emerge: Greedy-Min still leads (0.584), but MetaSelector (0.582) and PD-Advantage (0.582) are within one standard error.
+BKT-Bandit (0.581) and basic Advantage (0.580) closely follow.
 
 The picture changes dramatically at high decay ($\lambda{=}0.05$): \textbf{F-UCB dominates} with $\bar{k} = 0.211$, a $+42\%$ improvement over Random (0.149).
 SW-UCB (0.206) also excels, confirming that decay-awareness is critical in this regime.
@@ -56,7 +56,7 @@ BKT-Bandit maintains the strongest relative performance across all scales, while
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.9\textwidth]{fig_scaling.png}
-  \caption{Scaling behavior at $\lambda{=}0.01$: final mean knowledge decreases as $K$ grows. BKT-Bandit (green) maintains the strongest relative performance; Greedy-Min (orange) degrades fastest.}
+  \caption{Scaling at $\lambda{=}0.01$: all methods degrade as $K$ grows. BKT-Bandit (green) maintains the strongest relative performance. Lookahead Oracle (brown, dashed) outperforms Greedy-Min at $K{\geq}20$ but underperforms at low $K$ due to overweighting negligible decay.}
   \label{fig:scaling}
 \end{figure}
 
@@ -108,8 +108,8 @@ All algorithms maintain their advantage over Random across the full mis-specific
 Different algorithms dominate in different $(K, \lambda)$ regimes (\Cref{fig:regime}):
 
 \begin{itemize}[leftmargin=*,itemsep=1pt]
-    \item \textbf{Low decay ($\lambda{=}0.005$):} Forgetting is mild; Adapt-Whittle and Greedy-Min perform well. Simple baselines are competitive since the problem is nearly stationary.
-    \item \textbf{Moderate decay ($\lambda{=}0.01$):} BKT-Bandit and PD-Whittle excel. Bayesian tracking of uncertainty provides an edge.
+    \item \textbf{Low decay ($\lambda{=}0.005$):} Forgetting is mild; Adapt-Advantage and Greedy-Min perform well. Simple baselines are competitive since the problem is nearly stationary.
+    \item \textbf{Moderate decay ($\lambda{=}0.01$):} BKT-Bandit and PD-Advantage excel. Bayesian tracking of uncertainty provides an edge.
     \item \textbf{High decay ($\lambda{=}0.05$):} F-UCB and SW-UCB dominate. Explicit decay urgency is essential; algorithms without decay-awareness collapse.
     \item \textbf{Large $K$ ($K{\geq}50$):} MetaSelector stabilizes at rank~3 and achieves top-5 in 11/12 configurations. Its regime interpolation automatically favors the best expert.
 \end{itemize}
@@ -150,7 +150,7 @@ Our replay evaluation is model-based: when the bandit selects a skill with avail
 
 \Cref{tab:real_data} reports results.
 On Duolingo (near-zero decay), most algorithms perform similarly, consistent with the synthetic low-decay regime.
-On ASSISTments (moderate decay), BKT-Bandit and PD-Whittle maintain their advantage, and the Greedy-Min catastrophe manifests clearly (\Cref{fig:real_data}).
+On ASSISTments (moderate decay), BKT-Bandit and PD-Advantage maintain their advantage, and the Greedy-Min catastrophe manifests clearly (\Cref{fig:real_data}).
 
 \subsection{MetaSelector Consistency}
 \label{sec:meta_consistency}

@@ -26,7 +26,7 @@ Knowledge tracing models~\citep{corbett1994knowledge,piech2015deep} provide soph
 
 We present \textbf{\ours}, a comprehensive framework and benchmark for adaptive question selection under forgetting.
 We formalize the problem as a \emph{restless multi-armed bandit} (RMAB)~\citep{whittle1988restless}, where each knowledge topic is an arm whose state evolves even when not selected (due to forgetting).
-Within this formulation, we develop four novel algorithms: \textbf{F-UCB}, which integrates decay-aware urgency into the UCB exploration bonus; \textbf{BKT-Bandit}, which maintains Bayesian posteriors over knowledge with integrated forgetting dynamics; \textbf{Whittle-advantage}, which computes restless bandit indices via MDP value differences; and \textbf{MetaSelector}, a UCB-over-experts meta-algorithm that selects among base selectors online, enabling principled regime interpolation.
+Within this formulation, we develop four novel algorithms: \textbf{F-UCB}, which integrates decay-aware urgency into the UCB exploration bonus; \textbf{BKT-Bandit}, which maintains Bayesian posteriors over knowledge with integrated forgetting dynamics; \textbf{Advantage Index}, which computes restless bandit indices via MDP value differences; and \textbf{MetaSelector}, a UCB-over-experts meta-algorithm that selects among base selectors online, enabling principled regime interpolation.
 
 Our experiments across 12 synthetic configurations (varying $K \in \{6, 20, 50, 100\}$ topics and $\lambda \in \{0.005, 0.01, 0.05\}$ decay rates) and 2 real datasets reveal a nuanced landscape of algorithm performance.
 No single algorithm dominates all regimes: BKT-Bandit achieves top-3 in 10/12 configurations with average rank 2.50, while F-UCB delivers the largest gains ($+42\%$ over random) at high decay.
@@ -34,8 +34,8 @@ Most strikingly, we discover a \emph{Greedy-Min catastrophe}: a myopic selector 
 
 In summary, our contributions are:
 \begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
-  \item \textbf{RMAB formulation.} We extend RMAB-based approaches~\citep{mate2024eduqate,reddy2016unbounded} to a comprehensive quizzing benchmark with Ebbinghaus forgetting dynamics, providing a principled framework that exposes why stationary methods fail.
-  \item \textbf{Four novel algorithms.} We introduce F-UCB, BKT-Bandit, Whittle-advantage, and MetaSelector, each targeting different aspects of the forgetting-aware selection problem.
+  \item \textbf{RMAB formulation with theoretical analysis.} We formalize educational quizzing as a restless bandit with Ebbinghaus forgetting, prove a precise catastrophe condition for myopic policies (Theorem~\ref{thm:catastrophe}), and establish convergence guarantees for our proposed algorithms (Theorems~\ref{thm:bkt}--\ref{thm:fucb}).
+  \item \textbf{Four novel algorithms.} We introduce F-UCB, BKT-Bandit, Advantage Index, and MetaSelector, each targeting different aspects of the forgetting-aware selection problem.
   \item \textbf{Greedy-Min catastrophe.} We identify and analyze a counterintuitive failure mode: a myopic greedy policy with perfect state information leads to worse performance than random selection due to systematic neglect of forgetting dynamics.
   \item \textbf{Comprehensive benchmark.} We evaluate 16 algorithms across 12 synthetic configurations and 2 real datasets (Duolingo: 500 students, 127K interactions; ASSISTments: 500 students, 425K interactions), providing the most extensive comparison of bandit-based question selectors to date.
 \end{enumerate}
