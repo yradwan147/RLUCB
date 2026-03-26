@@ -175,12 +175,37 @@ Weaknesses: misleading "Oracle" term, missing dTS baseline, no λ sensitivity, o
 ### IBEX ready
 `bash slurm/submit_revision.sh` → 56 jobs (6 dTS + 5 λ-sensitivity + 42 seeds + 3 LookaheadOracle)
 
-### What's next (after IBEX results)
-- Integrate dTS + LookaheadOracle into all tables/figures
-- Update with 10-seed mean ± std
-- Add λ sensitivity figure to supplementary
-- Recompile paper
-- Re-submit to Stanford reviewer
+### IBEX results (56/56 succeeded)
+- dTS: rank ~12, below Thompson — validates BKT-Bandit advantage over naive discounting
+- LookaheadOracle: beats F-UCB at d=0.05 (0.248 vs 0.211), confirms catastrophe is myopia not state info
+- LookaheadOracle low-decay paradox: 0.514 vs Random 0.774 — overweights negligible decay
+- λ sensitivity: BKT-Bandit robust (<0.001 degradation), F-UCB most sensitive (-0.009 at 0.5×)
+- 10-seed stats: std <0.003, high reproducibility, non-overlapping CIs for top algorithms
+
+### Final paper integration + deep review
+- All new results integrated into tables, figures, text
+- 4 figures regenerated with 16 algorithms (teaser, scaling, oracle_catastrophe, sensitivity)
+- 2 figures added (fig_real_data, fig_temporal)
+- fig_sensitivity (λ mis-specification) created and added to experiments section
+- All \Cref cross-references added for all figures
+- Algorithm count fixed: 14→16 throughout
+- F-UCB improvement standardized to +42%
+- LookaheadOracle low-decay failure explained
+- NeurIPS checklist updated (seeds, broader impacts)
+- Bib entry types fixed, TODO markers removed
+- Eq(10) contextualized
+
+### Final paper stats
+- 19 pages, 767KB, 7 figures, 4 tables, ~35 references
+- 0 LaTeX errors, 0 undefined references, 0 missing figures
+- 16 algorithms benchmarked across 12 synthetic configs + 2 real datasets
+
+### What's next
+- Re-submit to Stanford reviewer for updated score
+- Proofread one more time for any remaining typos
+- Consider adding 10-seed results for K=50,100 if reviewer asks
+- Theory section (regret bounds) if time permits before deadline
+- Final camera-ready formatting
 
 ---
 
