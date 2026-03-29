@@ -1,6 +1,6 @@
 # RLUCB NeurIPS Extension — Worklog
 
-## Session 8 — 2026-03-29: Final Additions Plan (Items 1–5)
+## Sessions 8–9 — 2026-03-29: Final Additions Plan + Deep Review (COMPLETE)
 
 ### Status entering session
 - EquiBandit code complete (exposure-equity penalty, η=0.1): Gini 0.444→0.101 at K=20 λ=0.01
@@ -65,11 +65,27 @@ Full theoretical + numerical audit of all 4 theorems via scripts/verify_theorems
   These are a valid subfamily of the forgetting bandit. Lower bound inherited. ✓
 - Numerical verification: R/√(KT) ≈ 0.7–2.1 (Θ(1)) confirmed for UCB1
 
-### Still TODO (needs IBEX)
-- EquiBandit IBEX experiments (6 jobs: K=6,20 × λ=0.005,0.01,0.05)
-- Add EquiBandit row to table_main_results.tex and table_consistency.tex
-- Pareto figure (avg_knowledge vs Gini) for all 14 algorithms
-- Flowchart (Item 4): decision tree for algorithm selection by (K, λ) regime
+### Session wrap-up — final state (2026-03-29 EOD)
+
+**Paper state:** Complete and pushed (commit 9659890). All sections internally consistent.
+- 4 theorems, all verified numerically and theoretically
+- 5 novel algorithms (F-UCB, BKT-Bandit, Advantage Index, MetaSelector, EquiBandit)
+- 14 algorithms in main tables; EquiBandit in dedicated equity subsection
+- All writing issues resolved; future work updated
+
+**Remaining before submission:**
+
+| Priority | Task | Blocker | Script |
+|----------|------|---------|--------|
+| HIGH | Submit EquiBandit IBEX jobs | none | `sbatch scripts/ibex_equibandit.sh` |
+| HIGH | Add EquiBandit row to table_main_results + table_consistency | IBEX results | `python scripts/collect_equibandit.py` |
+| MED | Pareto figure (knowledge vs Gini, all algorithms) | IBEX results | new viz script |
+| MED | Flowchart: decision tree for (K,λ) regime | none (use existing rank data) | new tikz/matplotlib |
+| LOW | Recompile paper PDF after all changes | none | `make -C paper` |
+
+**Commit history this session:**
+- `d140900` — Theorem additions + all theorem fixes (deep review)
+- `9659890` — Writing review: F-UCB Decay definition, equity subsection, conclusion fix, IBEX scripts
 
 ---
 
