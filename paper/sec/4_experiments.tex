@@ -84,7 +84,7 @@ At low decay ($\lambda{=}0.005$), the Lookahead Oracle paradoxically underperfor
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.95\textwidth]{fig_oracle_catastrophe.png}
-  \caption{Greedy-Min catastrophe: Greedy-Min's rank out of 14 algorithms across all 12 configurations. Red bars indicate last-place finishes. Greedy-Min finishes last in 9/12 and loses to Random in 10/12.}
+  \caption{Greedy-Min catastrophe: Greedy-Min's rank across all 12 configurations. Red bars indicate last-place finishes. Greedy-Min finishes last in 9/12 and loses to Random in 10/12.}
   \label{fig:oracle_catastrophe}
 \end{figure}
 
@@ -118,7 +118,7 @@ Different algorithms dominate in different $(K, \lambda)$ regimes (\Cref{fig:reg
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.75\textwidth]{fig_regime_heatmap.png}
-  \caption{Winner heatmap across $(K, \lambda)$ configurations. F-UCB (red) sweeps all $\lambda{=}0.05$ configs; BKT-Bandit (green) dominates at $K{\geq}50$. No single algorithm wins everywhere.}
+  \caption{Winner heatmap across $(K, \lambda)$ configurations. F-UCB (red) dominates at $\lambda{=}0.05$ for $K{\geq}20$; BKT-Bandit (green) dominates at moderate decay for $K{\geq}20$. No single algorithm wins everywhere.}
   \label{fig:regime}
 \end{figure}
 
@@ -165,8 +165,9 @@ Our replay evaluation is model-based: when the bandit selects a skill with avail
 \begin{figure}[t]\centering\includegraphics[width=0.95\textwidth]{fig_real_data.png}\caption{Real data evaluation on Duolingo (left) and ASSISTments (right). Performance differences are small, with Leitner and UCB1 leading on Duolingo.}\label{fig:real_data}\end{figure}
 
 \Cref{tab:real_data} reports results.
-On Duolingo (near-zero decay), most algorithms perform similarly, consistent with the synthetic low-decay regime.
-On ASSISTments (moderate decay), BKT-Bandit and MetaSelector maintain their advantage, and the Greedy-Min catastrophe manifests clearly (\Cref{fig:real_data}).
+On Duolingo (near-zero decay), Leitner leads ($\bar{k}{=}0.750$) due to its spaced repetition schedule aligning well with the near-absent forgetting.
+Performance differences are moderate, with all algorithms between $0.65$--$0.75$.
+On ASSISTments (moderate decay), all algorithms cluster tightly ($\bar{k} \approx 0.50$), and the Greedy-Min deficit is small ($0.498$ vs Random's $0.509$)---the moderate-decay catastrophe from synthetic experiments is attenuated by the model-based replay, where the fitted $\lambda{=}0.008$ is low (\Cref{fig:real_data}).
 
 \subsection{MetaSelector Consistency}
 \label{sec:meta_consistency}
