@@ -93,7 +93,7 @@ At low decay ($\lambda{=}0.005$), the Lookahead Oracle paradoxically underperfor
 
 A practical concern is whether algorithms require accurate knowledge of the true decay rate~$\lambda$.
 \Cref{fig:sensitivity} shows performance when algorithms use $\hat{\lambda} \in \{0.5\lambda, 0.8\lambda, \lambda, 1.2\lambda, 2\lambda\}$ while the true rate remains $\lambda{=}0.01$.
-BKT-Bandit is remarkably robust (max degradation $<0.001$), while F-UCB is the most sensitive ($-0.009$ at $0.5\lambda$) but never drops below Random.
+BKT-Bandit is remarkably robust (max degradation $<0.004$), while F-UCB is the most sensitive ($-0.009$ at $0.5\lambda$) but never drops below Random.
 All algorithms maintain their advantage over Random across the full mis-specification range.
 
 \begin{figure}[t]
