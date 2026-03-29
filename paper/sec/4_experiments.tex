@@ -36,7 +36,7 @@ Greedy-Min achieves the best score (0.790), but its advantage is marginal.
 At moderate decay ($\lambda{=}0.01$), differences emerge: Greedy-Min still leads (0.586), but MetaSelector (0.583) is within one standard error.
 BKT-Bandit (0.581) and Advantage (0.581) closely follow.
 
-The picture changes dramatically at high decay ($\lambda{=}0.05$): \textbf{F-UCB dominates} with $\bar{k} = 0.211$, a $+42\%$ improvement over Random (0.149).
+The picture changes dramatically at high decay ($\lambda{=}0.05$): \textbf{F-UCB dominates} with $\bar{k} = 0.213$, a $+42\%$ improvement over Random (0.149).
 SW-UCB (0.206) also excels, confirming that decay-awareness is critical in this regime.
 Crucially, \textbf{Greedy-Min collapses} to 0.124, finishing \emph{below Random}---the Greedy-Min catastrophe.
 
@@ -78,8 +78,8 @@ The catastrophe is \emph{worse} at higher $K$ (more arms decay per step) and hig
 At $K{=}6$, $\lambda{=}0.05$, Greedy-Min achieves only $0.124$ versus Random's $0.149$---a $16.8\%$ deficit.
 This finding demonstrates that \emph{perfect state information is insufficient} for effective selection under forgetting; what matters is the ability to anticipate and counteract future decay (\Cref{fig:oracle_catastrophe}).
 
-To disentangle myopia from state observability, we also evaluate a \textbf{Lookahead Oracle} that simulates the expected total knowledge after each candidate action, including the forgetting of unquizzed categories. At $\lambda{=}0.05$, $K{=}6$, Lookahead Oracle achieves $\bar{k} = 0.248$---\emph{above} F-UCB (0.211) and far above Greedy-Min (0.122). At $K{=}20$, Lookahead Oracle dominates Greedy-Min at both $\lambda{=}0.01$ ($0.183$ vs $0.139$) and $\lambda{=}0.05$ ($0.144$ vs $0.105$). This confirms that the catastrophe is caused by \emph{myopia}, not by having perfect state information: a simple one-step lookahead that accounts for forgetting suffices to recover strong performance.
-At low decay ($\lambda{=}0.005$), the Lookahead Oracle paradoxically underperforms ($\bar{k}{=}0.514$ versus Random's $0.774$), because it overweights the negligible decay penalty for unquizzed categories, leading to excessive topic-switching even when sustained practice on a single topic would be more beneficial. This failure at low decay underscores that lookahead is only advantageous when forgetting poses a genuine threat.
+To disentangle myopia from state observability, we also evaluate a \textbf{Lookahead Oracle} that simulates the expected total knowledge after each candidate action, including the forgetting of unquizzed categories. At $\lambda{=}0.05$, $K{=}6$, Lookahead Oracle achieves $\bar{k} = 0.248$---\emph{above} F-UCB (0.213) and far above Greedy-Min (0.124). At $K{=}20$, Lookahead Oracle dominates Greedy-Min at both $\lambda{=}0.01$ ($0.183$ vs $0.139$) and $\lambda{=}0.05$ ($0.144$ vs $0.105$). This confirms that the catastrophe is caused by \emph{myopia}, not by having perfect state information: a simple one-step lookahead that accounts for forgetting suffices to recover strong performance.
+At low decay ($\lambda{=}0.005$), the Lookahead Oracle paradoxically underperforms ($\bar{k}{=}0.514$ versus Random's $0.776$), because it overweights the negligible decay penalty for unquizzed categories, leading to excessive topic-switching even when sustained practice on a single topic would be more beneficial. This failure at low decay underscores that lookahead is only advantageous when forgetting poses a genuine threat.
 
 \begin{figure}[t]
   \centering
@@ -112,7 +112,7 @@ Different algorithms dominate in different $(K, \lambda)$ regimes (\Cref{fig:reg
     \item \textbf{Low decay ($\lambda{=}0.005$):} Forgetting is mild; Greedy-Min and Leitner perform well. Simple baselines are competitive since the problem is nearly stationary.
     \item \textbf{Moderate decay ($\lambda{=}0.01$):} BKT-Bandit and MetaSelector excel. Bayesian tracking of uncertainty provides an edge.
     \item \textbf{High decay ($\lambda{=}0.05$):} F-UCB and SW-UCB dominate. Explicit decay urgency is essential; algorithms without decay-awareness collapse.
-    \item \textbf{Large $K$ ($K{\geq}50$):} MetaSelector stabilizes at rank~3 and achieves top-5 in 11/12 configurations. Its regime interpolation automatically favors the best expert.
+    \item \textbf{Large $K$ ($K{\geq}50$):} MetaSelector stabilizes at rank~3 and achieves top-3 in all $K{\geq}50$ configurations. Its regime interpolation automatically favors the best expert.
 \end{itemize}
 
 \begin{figure}[t]

@@ -49,7 +49,7 @@ This RMAB is intractable in general (PSPACE-hard~\citep{papadimitriou1999complex
 \subsection{Baseline Algorithms}
 \label{sec:baselines}
 
-We evaluate seven baseline algorithms spanning classical bandits, heuristics, and a myopic greedy policy.
+We evaluate nine baseline algorithms spanning classical bandits, heuristics, non-stationarity-aware methods, and oracle policies.
 
 \paragraph{Random.}
 Selects a topic uniformly at random at each step.
@@ -68,7 +68,7 @@ With probability $\varepsilon = 0.1$ selects a random arm; otherwise selects the
 
 \paragraph{Sliding-Window UCB (SW-UCB)~\citep{garivier2011upper}.}
 Restricts reward estimates to the most recent $\tau$ observations per arm, adapting to non-stationarity.
-Uses $\tau = 50$ in our experiments.
+Uses $\tau = 100$ in our experiments.
 
 \paragraph{Leitner System~\citep{leitner1972so}.}
 Implements the classical box-based spaced repetition heuristic.
@@ -79,6 +79,14 @@ Lower boxes are reviewed more frequently.
 Has access to the true knowledge vector $\mathbf{k}^{(t)}$ at each step and selects $i^* = \argmin_i \; k_i^{(t)}$---the topic with the lowest current knowledge.%
 \footnote{Despite having access to the true knowledge state, Greedy-Min is myopic---it does not plan ahead or account for future forgetting dynamics. It should not be confused with a dynamic-programming-optimal policy.}
 Despite perfect information, this myopic greedy policy does not account for future forgetting.
+
+\paragraph{Discounted Thompson Sampling.}
+Applies a geometric discount $\gamma = e^{-\lambda}$ to the Beta posterior parameters at each step: $\alpha_i \leftarrow \gamma\,\alpha_i$, $\beta_i \leftarrow \gamma\,\beta_i$.
+This forgets old observations exponentially, tracking non-stationary reward distributions.
+
+\paragraph{Lookahead Oracle.}
+Has access to the true knowledge vector $\mathbf{k}^{(t)}$ and selects the arm that maximizes \emph{total expected knowledge after one step}, including the forgetting of all $K{-}1$ unselected arms.
+This one-step lookahead accounts for decay, distinguishing it from the myopic Greedy-Min.
 
 \subsection{Novel Algorithms}
 \label{sec:novel}
@@ -93,7 +101,7 @@ The score is:
     s_i^{\text{F-UCB}} = \underbrace{(1 - \hat{r}_i) \cdot e^{-\lambda t_i}}_{\text{weighted weakness}} + \underbrace{\gamma \cdot (1 - e^{-\lambda t_i})}_{\text{decay urgency}} + \underbrace{c\sqrt{\frac{\ln N}{n_i}}}_{\text{exploration}},
     \label{eq:fucb}
 \end{equation}
-where $\gamma = 1.0$ controls the urgency weight and $\lambda$ is the known decay rate.
+where $\gamma = 0.5$ controls the urgency weight and $\lambda$ is the known decay rate.
 The first term downweights the observed weakness estimate as it becomes stale; the second term increases urgency for arms that have been decaying longer; the third is the standard UCB exploration bonus.
 
 \paragraph{BKT-Bandit.}

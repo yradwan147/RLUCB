@@ -78,9 +78,9 @@ Average rank is computed across all 12 configurations.
 \input{tables/table_consistency}
 \end{table}
 
-BKT-Bandit achieves the best average rank (2.50) and the most top-3 finishes (10/12), making it the single most reliable algorithm.
-F-UCB ranks second with 4 wins but is less consistent across regimes.
-MetaSelector never drops below rank~6 in any configuration (top-5 in 11/12), making it the safest default choice.
+BKT-Bandit achieves the best average rank (2.17) and the most top-3 finishes (10/12), making it the single most reliable algorithm.
+F-UCB ranks second with 2 wins but is less consistent across regimes.
+MetaSelector achieves top-3 at every $K{\geq}50$ configuration and top-5 in 8/12 overall, making it the safest default choice.
 
 \paragraph{Temporal dynamics.}
 Knowledge trajectories reveal qualitatively different phases.
@@ -112,7 +112,7 @@ This trade-off suggests that combining BKT-Bandit with equity-aware methods coul
 We measure the Gini coefficient of the per-category exposure distribution at the final timestep.
 A Gini of 0 indicates perfectly equal exposure; higher values indicate concentration on fewer categories.
 At $K{=}6$, $\lambda{=}0.01$, all algorithms achieve near-perfect equity (Gini $<0.007$).
-At $K{=}20$, $\lambda{=}0.01$, most algorithms remain equitable (Gini $<0.03$), but BKT-Bandit concentrates heavily on a subset of categories (Gini $= 0.449$, ``very unequal''), confirming its equity--efficiency trade-off.
+At $K{=}20$, $\lambda{=}0.01$, most algorithms remain equitable (Gini $<0.03$), but BKT-Bandit concentrates heavily on a subset of categories (Gini $= 0.447$, ``very unequal''), confirming its equity--efficiency trade-off.
 MetaSelector exhibits moderate concentration (Gini $= 0.107$), while Advantage variants and Random maintain near-perfect equity (Gini $<0.003$).
 
 \paragraph{F-UCB urgency weight ($\gamma$) sensitivity.}
