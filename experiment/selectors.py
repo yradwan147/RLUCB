@@ -522,6 +522,116 @@ class ThompsonSelector(BaseSelector):
         return self.attempts.copy()
 
 
+class EquiBanditSelector(BaseSelector):
+    """
+    Equity-aware BKT-Bandit that balances knowledge gain with equity.
+
+    Extends BKT-Bandit's posterior-based scoring with a variance penalty
+    that prioritizes categories whose knowledge deviates from the mean.
+    This explicitly addresses the equity-efficiency tradeoff: BKT-Bandit
+    concentrates on high-value categories (Gini=0.449 at K=20), while
+    EquiBandit regularizes toward equal mastery.
+
+    Score: (1 - μ_i) + c·σ_i + η·(μ_i - μ̄)²
+    The η·(μ_i - μ̄)² term gives higher priority to categories that are
+    far from the average — whether above (over-mastered) or below (neglected).
+    """
+
+    def __init__(
+        self,
+        num_categories: int,
+        exploration_param: float = 1.414,
+        decay_rate: float = 0.01,
+        equity_weight: float = 0.5,
+        prior_alpha: float = 1.0,
+        prior_beta: float = 1.0,
+    ):
+        self.num_categories = num_categories
+        self.exploration_param = exploration_param
+        self.decay_rate = decay_rate
+        self.equity_weight = equity_weight
+        self.prior_alpha = prior_alpha
+        self.prior_beta = prior_beta
+
+        self.alpha = np.full(num_categories, prior_alpha)
+        self.beta_ = np.full(num_categories, prior_beta)
+        self.attempts = np.zeros(num_categories, dtype=np.int32)
+        self.correct = np.zeros(num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self.time_since_exposure = np.zeros(num_categories, dtype=np.int32)
+
+    def _apply_forgetting(self) -> None:
+        for i in range(self.num_categories):
+            if self.time_since_exposure[i] > 0:
+                t = self.time_since_exposure[i]
+                decay = math.exp(-self.decay_rate * t)
+                self.alpha[i] = self.prior_alpha + (self.alpha[i] - self.prior_alpha) * decay
+                self.beta_[i] = self.prior_beta + (self.beta_[i] - self.prior_beta) * decay
+
+    def select_category(self) -> int:
+        self._apply_forgetting()
+
+        # Compute posterior means
+        means = np.array([self.alpha[i] / (self.alpha[i] + self.beta_[i])
+                          for i in range(self.num_categories)])
+        mean_avg = np.mean(means)
+
+        best_score = -float('inf')
+        best_cat = 0
+
+        for i in range(self.num_categories):
+            a, b = self.alpha[i], self.beta_[i]
+            mean_k = means[i]
+            std = math.sqrt(a * b / ((a + b) ** 2 * (a + b + 1)))
+
+            # BKT-Bandit base: weakness + uncertainty
+            weakness = 1 - mean_k
+            exploration = self.exploration_param * std
+
+            # Equity bonus: prioritize categories far from the mean
+            equity = self.equity_weight * (mean_k - mean_avg) ** 2
+
+            score = weakness + exploration + equity
+            if score > best_score:
+                best_score = score
+                best_cat = i
+
+        return best_cat
+
+    def update(self, category: int, correct: bool) -> None:
+        if correct:
+            self.alpha[category] += 1
+            self.correct[category] += 1
+        else:
+            self.beta_[category] += 1
+        self.attempts[category] += 1
+        self.total_questions += 1
+        self.time_since_exposure += 1
+        self.time_since_exposure[category] = 0
+
+    def reset(self) -> None:
+        self.alpha = np.full(self.num_categories, self.prior_alpha)
+        self.beta_ = np.full(self.num_categories, self.prior_beta)
+        self.attempts = np.zeros(self.num_categories, dtype=np.int32)
+        self.correct = np.zeros(self.num_categories, dtype=np.int32)
+        self.total_questions = 0
+        self.time_since_exposure = np.zeros(self.num_categories, dtype=np.int32)
+
+    def get_statistics(self) -> dict:
+        stats = {}
+        for i in range(self.num_categories):
+            a = int(self.attempts[i])
+            c = int(self.correct[i])
+            stats[f"Category_{i}"] = {
+                "attempts": a, "correct": c, "incorrect": a - c,
+                "correctness_rate": c / a if a > 0 else 0.0,
+            }
+        return stats
+
+    def get_exposure_distribution(self) -> np.ndarray:
+        return self.attempts.copy()
+
+
 class DiscountedTSSelector(BaseSelector):
     """
     Discounted Thompson Sampling for non-stationary bandits.
@@ -1545,6 +1655,12 @@ SELECTOR_REGISTRY = {
         incorrect_penalty=cfg.incorrect_penalty,
         decay_rate=cfg.decay_rate,  # uses TRUE decay (not selector_decay_rate)
         base_knowledge=cfg.base_knowledge,
+    ),
+    "equi_bandit": lambda cfg, rng: EquiBanditSelector(
+        cfg.num_categories,
+        exploration_param=cfg.exploration_param,
+        decay_rate=cfg.selector_decay_rate,
+        equity_weight=0.5,
     ),
     "discounted_ts": lambda cfg, rng: DiscountedTSSelector(
         cfg.num_categories,
