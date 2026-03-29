@@ -98,13 +98,19 @@ Full theoretical + numerical audit of all 4 theorems via scripts/verify_theorems
 - BKT Top-3 in 10/12 ✓
 - F-UCB +42% at high decay ✓
 
-**Remaining before submission:**
+**Deep audit:** 10 issues found and fixed (commit 091f2f6):
+- F-UCB 0.211→0.213, Greedy-Min 0.122→0.124, Random 0.774→0.776
+- Supplementary: BKT rank 2.50→2.17, F-UCB wins 4→2, MetaSelector 11/12→8/12, Gini 0.449→0.447
+- Method: γ=1.0→0.5 (matches code), SW-UCB τ=50→100 (matches code)
+- Added Discounted TS + Lookahead Oracle descriptions to baselines ("seven"→"nine")
 
-| Priority | Task | Status |
-|----------|------|--------|
-| MED | Pareto figure (knowledge vs Gini) | Not started |
-| MED | Flowchart: (K,λ) → algorithm decision tree | Not started |
-| LOW | Recompile paper PDF | Not started |
+**Figures added (commit 979be27):**
+- `fig_pareto.png`: Knowledge vs Gini Pareto frontier at K=20 (λ=0.01 and 0.05)
+- `fig_flowchart.png`: Algorithm selection decision tree for practitioners
+- NeurIPS checklist Theory item: N/A → Yes (4 theorems)
+- Remark environment defined; PDF compiles clean: 24 pages, 0 errors
+
+**PAPER STATUS: COMPLETE. All tasks done. Ready for submission.**
 
 ---
 
