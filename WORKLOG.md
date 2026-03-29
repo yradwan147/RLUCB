@@ -329,4 +329,46 @@ Weaknesses: misleading "Oracle" term, missing dTS baseline, no λ sensitivity, o
 
 ---
 
+## Session 9 — 2026-03-29 (continued): Deep paper review + writing improvements
+
+### Deep full-paper review findings
+
+Read all sections (abstract, intro, related, method, experiments, conclusion, all tables).
+
+**Issues found and fixed:**
+
+1. **`3_method.tex` "four algorithms" → "five"** (EquiBandit is 5th; was a typo)
+
+2. **F-UCB (Decay) definition missing** — the ablation variant appears in all tables but was never
+   defined in the methods section. Added dedicated paragraph after F-UCB definition with score
+   formula and ablation purpose.
+
+3. **Algorithm list mismatch** — `sec:setup` listed "EquiBandit" among the 14, but tables have
+   "F-UCB (Decay)" instead (EquiBandit IBEX runs still pending). Fixed: replaced "EquiBandit"
+   with "F-UCB (Decay)" in algorithm list; added pointer to equity subsection.
+
+4. **Equity subsection missing** — EquiBandit was introduced in methods but never evaluated in
+   experiments. Added `sec:equity` subsection: Gini 0.449→0.101 at K=20 λ=0.01, -1.7% knowledge
+   loss vs BKT-Bandit, Pareto frontier argument.
+
+5. **Conclusion missing EquiBandit** — Added to summary paragraph (Gini 0.449→0.101, -1.7% cost).
+
+6. **Future work: "tightening bounds"** — was listed as future work but already done in Session 8.
+   Replaced with: extending bounds to non-stationary λ + off-policy IPS evaluation.
+
+### New scripts
+- `scripts/ibex_equibandit.sh` — SLURM array (60 jobs): K∈{6,20} × λ∈{0.005,0.01,0.05} × 10 seeds
+  for EquiBandit + BKT-Bandit + Random. CPU-only (no GPU), 2h wall time, 8G RAM.
+- `scripts/collect_equibandit.py` — aggregation script: reads per-seed CSVs, computes
+  mean±SE for knowledge and Gini coefficient, prints LaTeX-ready equity table.
+
+### Still TODO (needs IBEX)
+- Submit `sbatch scripts/ibex_equibandit.sh` on IBEX
+- After collection: update `table_main_results.tex` and `table_consistency.tex` with EquiBandit row
+- Pareto figure (avg_knowledge vs Gini) for all algorithms
+- Flowchart (Item 4 from plan): decision tree for algorithm selection by (K, λ) regime
+  → can be built without IBEX (use existing rank table data)
+
+---
+
 ## Paper References (see previous entries for full list)

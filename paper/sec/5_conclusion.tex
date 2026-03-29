@@ -1,8 +1,9 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-We presented \ours, a comprehensive framework for adaptive question selection under forgetting dynamics, and evaluated 16 bandit algorithms across 12 synthetic configurations and 2 real educational datasets.
-Our study reveals that no single algorithm dominates all regimes: BKT-Bandit achieves top-3 in 10/12 configurations (out of 16 algorithms) with an average $+8.2\%$ improvement over random selection, F-UCB delivers the largest gains ($+42\%$) at high decay rates, and MetaSelector provides the most consistent performance (top-5 in 11/12) through principled regime interpolation.
+We presented \ours, a comprehensive framework for adaptive question selection under forgetting dynamics, and evaluated 14 bandit algorithms across 12 synthetic configurations and 2 real educational datasets.
+Our study reveals that no single algorithm dominates all regimes: BKT-Bandit achieves top-3 in 10/12 configurations (out of 14 algorithms) with an average $+8.2\%$ improvement over random selection, F-UCB delivers the largest gains ($+42\%$) at high decay rates, and MetaSelector provides the most consistent performance (top-5 in 11/12) through principled regime interpolation.
+For equity-sensitive deployments, EquiBandit reduces the topic-exposure Gini coefficient from $0.449$ to $0.101$ at $K{=}20$ with only a $-1.7\%$ knowledge loss, demonstrating that fairness and efficiency need not be in fundamental conflict.
 
 The Greedy-Min catastrophe---where a myopic greedy selector with perfect state information loses to random in 10/12 settings---is perhaps our most striking finding.
 It demonstrates that effective selection under forgetting requires not just accurate state estimation but the ability to anticipate and counteract future decay, challenging the common assumption that better models automatically yield better policies.
@@ -12,7 +13,7 @@ This work has several limitations.
 The synthetic environment, while incorporating realistic learning and forgetting dynamics, simplifies real human cognition; the gap between synthetic and real-data results (particularly the near-zero decay in Duolingo) highlights the need for more realistic simulators.
 BKT-Bandit underperforms at $K{=}20$, $\lambda{=}0.005$, suggesting that its posterior decay mechanism may be miscalibrated in certain regimes.
 Additionally, our real-data evaluation uses offline replay rather than live deployment.
-Future work should investigate online deployment, richer student models with prerequisite structures, and tightening the theoretical regret bounds established in \Cref{sec:theory}.
+Future work should investigate online deployment, richer student models with prerequisite structures, extending theoretical bounds to the fully non-stationary setting where $\lambda$ itself varies across topics, and off-policy evaluation with propensity-corrected estimators for the real-data replay protocol.
 
 \noindent\textbf{Data Availability.}
 Code, data, and all experimental scripts are publicly available at \url{https://github.com/yousef-radwan/RLUCB}.
