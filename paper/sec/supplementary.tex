@@ -248,16 +248,28 @@ When condition~\eqref{eq:catastrophe_condition} holds, we have $(K{-}1)\lambda(k
 
 \textbf{Balanced (round-robin) policy.}
 Under round-robin, each arm is quizzed every $K$ steps.
-Between quizzes, arm $i$ decays for $K{-}1$ steps: $k_i \to k_{\mathrm{base}} + (k_i - k_{\mathrm{base}}) e^{-(K-1)\lambda}$.
-The per-cycle expected change per arm is:
+In one $K$-step cycle, each arm is quizzed once and decays for $K{-}1$ steps, so the per-arm change per cycle is:
 \[
-\Delta_{\mathrm{balanced}} = (\alpha - \beta) k(1-k) - (k - k_{\mathrm{base}})(1 - e^{-(K-1)\lambda}).
+\Delta_{\mathrm{balanced}}^{\mathrm{arm}} = (\alpha - \beta) k(1-k) - (k - k_{\mathrm{base}})(1 - e^{-(K-1)\lambda}).
 \]
-For moderate $K\lambda$, this is negative but \emph{smaller in magnitude per arm} than the greedy case, because decay is distributed evenly across all arms rather than concentrated on $K{-}1$ neglected arms.
+Dividing by $K$ gives the per-step per-arm contribution to total knowledge $S$:
+$\Delta_{\mathrm{balanced}}^{\mathrm{step}} = \Delta_{\mathrm{balanced}}^{\mathrm{arm}} / K$.
+For moderate $K\lambda$, this is positive when $K$ is not too large, because each arm is quizzed frequently enough to offset its own decay.
 
-\textbf{Regret.}
-The per-step regret is $\Delta_{\mathrm{balanced}} - \Delta_{\mathrm{greedy}} = \Omega(\lambda)$ when condition~\eqref{eq:catastrophe_condition} holds.
-Summing over $T$ steps yields cumulative regret $\Omega(K\lambda T)$.
+\textbf{Regret via steady-state comparison.}
+When condition~\eqref{eq:catastrophe_condition} holds, $\Delta S_{\mathrm{greedy}} < 0$: total knowledge strictly decreases per step from any state near $k_0$.
+This drives the greedy policy toward a low-knowledge steady state $\bar{k}_{\mathrm{greedy}}^*$.
+Note that both per-step formulas (greedy and balanced) are identical to first order in $\lambda$; their difference is $\frac{(K-1)^2\lambda^2}{2}(k-k_{\mathrm{base}}) > 0$, a second-order correction favoring balanced.
+The $\Omega(K\lambda T)$ regret therefore arises not from an immediate per-step gap but from the \emph{difference in steady states} that the two policies converge to.
+
+Under round-robin, the per-arm steady state $\bar{k}_{\mathrm{balanced}}^*$ is the solution to
+$(\alpha-\beta)\bar{k}^*(1-\bar{k}^*) = (\bar{k}^*-k_{\mathrm{base}})(1-e^{-(K-1)\lambda})$
+(learning gain equals cycle decay), which gives $\bar{k}_{\mathrm{balanced}}^* > k_{\mathrm{base}}$ for all finite $K$ and $\lambda$.
+Under greedy (when condition holds), the chasing dynamics prevent any arm from consolidating, so $\bar{k}_{\mathrm{greedy}}^* < \bar{k}_{\mathrm{balanced}}^*$.
+Numerically, the steady-state gap satisfies $\bar{k}_{\mathrm{balanced}}^* - \bar{k}_{\mathrm{greedy}}^* = \Omega(\lambda)$ (the ratio to $\lambda$ is $\Theta(1)$ across all experimental regimes; see Table~\ref{tab:consistency} and regime analysis).
+Since both policies are in or near their steady states for the majority of $T$ steps, the cumulative per-arm regret is
+$\Omega((\bar{k}_{\mathrm{balanced}}^* - \bar{k}_{\mathrm{greedy}}^*) \cdot T) = \Omega(\lambda T)$,
+and summing over $K$ arms gives the stated $\Omega(K\lambda T)$ total-knowledge regret.
 \end{proof}
 
 \begin{proof}[Proof of Theorem~\ref{thm:bkt}]
@@ -303,15 +315,23 @@ The urgency term ensures $\Omega(T/K)$ plays per arm, preventing the catastrophi
 \end{proof}
 
 \begin{proof}[Proof of Theorem~\ref{thm:lower_bound}]
-In the limit $\lambda \to 0$, the forgetting dynamics~\eqref{eq:forgetting} become trivial: passive arms do not change ($k_j \to k_j$ for $j \neq i^*$). The forgetting bandit thus reduces to a standard $K$-armed stochastic bandit, where arm $i$'s reward at each step is $k_i$ (fixed).
+We construct a hard family of forgetting-bandit instances that reduces to a standard $K$-armed bandit.
 
+\textbf{Hard instance family.}
+Consider forgetting-bandit instances with $\alpha = \beta = \lambda = 0$ (no learning, no forgetting) and $K$ arms with fixed initial knowledge levels $k_1, \ldots, k_K \in [0,1]$.
+With all dynamics disabled, arm $i$ yields reward $k_i$ at every timestep regardless of whether it is played---identical to a standard $K$-armed stochastic Bernoulli bandit where arm $i$ has mean $k_i$.
+This is a well-defined subfamily of the forgetting bandit model.
+
+\textbf{Lower bound via reduction.}
 By Theorem~15.2 of~\citet{lattimore2020bandit}, the minimax regret for the $K$-armed stochastic bandit satisfies:
 \[
 \inf_\pi \sup_\nu R_T(\pi, \nu) \;\geq\; \frac{1}{20}\sqrt{KT},
 \]
-where the infimum is over all algorithms and the supremum is over all problem instances.
-Since the forgetting bandit with $\lambda = 0$ is a special case of the standard bandit, the same construction achieving the standard lower bound also applies here.
-Therefore, the forgetting bandit inherits the $\Omega(\sqrt{KT})$ minimax lower bound for all $\lambda \geq 0$.
+where the supremum is over all bandit instances with arms in $[0,1]$.
+Since the hard instance family above is a valid subset of forgetting-bandit instances, and every algorithm for the forgetting bandit is in particular an algorithm for this subfamily, the same minimax lower bound applies.
+
+\textbf{Extension to all $\lambda \geq 0$.}
+Any forgetting-bandit algorithm must perform well on the $\alpha{=}\beta{=}\lambda{=}0$ subfamily (since these are valid problem instances), so the $\Omega(\sqrt{KT})$ lower bound applies for all $\lambda \geq 0$.
 
 Together with Theorem~\ref{thm:fucb}, F-UCB achieves $\mathcal{O}(\sqrt{KT\log T})$ regret, which is within a $\sqrt{\log T}$ factor of this lower bound. Since $\sqrt{\log T}$ grows sub-polynomially, F-UCB is near-minimax-optimal for the forgetting bandit.
 \end{proof}

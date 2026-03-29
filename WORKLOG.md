@@ -36,6 +36,35 @@
 **table_comparison.tex**
 - Year 2025 → 2026 for ForgetBandit row
 
+### Deep theorem review (same session, post-commit)
+
+Full theoretical + numerical audit of all 4 theorems via scripts/verify_theorems.py:
+
+**Theorem 1 fixes:**
+- Typo: "K > 2.2 at λ=0.05" → "K > 2.25" (formula: 1 + 0.0625/0.05 = 2.25)
+- Proof sketch was wrong: claimed per-step gap = Ω(λ). Actual first-order gap is ZERO
+  (balanced and greedy have identical per-step formula at initial state k₀);
+  difference is O((Kλ)²). The Ω(KλT) regret is CORRECT but comes from steady-state
+  gap, not initial per-step analysis. Proof rewritten to use steady-state argument.
+- Steady-state gap confirmed: Δk_steady ≈ Θ(λ), ratio Δk/λ ≈ 0.4–2.7 (verified)
+
+**Theorem 2 fix:**
+- Added note clarifying the concentration bound is conservative (valid): n_eff is a
+  lower bound on true information content since geometric weights < 1.
+- n_eff formula verified numerically: simulated 100.50, theory 100.50 at λ=0.01 ✓
+
+**Theorem 3 fix:**
+- Previous proof had wrong Cauchy-Schwarz: wrote √(K log T)·√(Σ log T/Δᵢ²) but
+  correct form is log T · √(K · Σ 1/Δᵢ²). Fixed to use minimax-gap argument:
+  at Δᵢ = Θ(√(K log T / T)), per-arm regret = O(√(T log T / K)), × K = O(√(KT log T)) ✓
+- Urgency term guarantee verified: min plays ≥ 0.75 × T/K across all configs ✓
+
+**Theorem 4 fix:**
+- Proof said "λ→0 reduces to standard K-armed bandit" — wrong! With α,β>0 and λ=0,
+  rewards are non-stationary (grow with use). Fix: use α=β=λ=0 instances (fixed rewards).
+  These are a valid subfamily of the forgetting bandit. Lower bound inherited. ✓
+- Numerical verification: R/√(KT) ≈ 0.7–2.1 (Θ(1)) confirmed for UCB1
+
 ### Still TODO (needs IBEX)
 - EquiBandit IBEX experiments (6 jobs: K=6,20 × λ=0.005,0.01,0.05)
 - Add EquiBandit row to table_main_results.tex and table_consistency.tex

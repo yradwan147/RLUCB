@@ -168,10 +168,10 @@ Under this condition, the cumulative regret of the greedy policy relative to rou
 \end{theorem}
 
 \begin{proof}[Proof sketch]
-At each timestep, the greedy policy quizzes one arm while $K{-}1$ arms decay. The per-step passive decay across neglected arms is $(K{-}1) \cdot \lambda \cdot (k - k_{\mathrm{base}})$, while the expected learning gain from quizzing is $(\alpha - \beta) \cdot k(1{-}k)$. When the former exceeds the latter---i.e., condition~\eqref{eq:catastrophe_condition} holds---the net knowledge change per step is negative. The greedy policy's ``chasing'' behavior prevents consolidation on any single arm, while balanced allocation distributes decay evenly across arms, achieving net positive learning when $T/K$ is sufficiently large. The full proof constructs explicit knowledge trajectories under both policies and telescopes the per-step gap over $T$ rounds (Supplementary~\ref{app:proofs}).
+At each timestep, the greedy policy quizzes one arm while $K{-}1$ arms decay. The per-step change in total knowledge $S = \sum_i k_i$ under greedy is $\Delta S_{\mathrm{greedy}} = (\alpha-\beta)k(1-k) - (K-1)\lambda(k-k_{\mathrm{base}}) + O(\lambda^2)$. When condition~\eqref{eq:catastrophe_condition} holds, $\Delta S_{\mathrm{greedy}} < 0$: total knowledge decreases each step. This drives greedy toward a low-knowledge steady state $\bar{k}_{\mathrm{greedy}}^*$. Meanwhile, the balanced (round-robin) policy converges to a higher steady state $\bar{k}_{\mathrm{balanced}}^* > \bar{k}_{\mathrm{greedy}}^*$ because each arm is quizzed once per $K$-step cycle and the cycle-gain can offset decay. The steady-state gap satisfies $\bar{k}_{\mathrm{balanced}}^* - \bar{k}_{\mathrm{greedy}}^* = \Omega(\lambda)$, yielding cumulative regret $\Omega(K\lambda T)$ (Supplementary~\ref{app:proofs}).
 \end{proof}
 
-For our default parameters ($\alpha{=}0.12$, $\beta{=}0.02$, $k_0{=}0.5$, $k_{\mathrm{base}}{=}0.10$), the catastrophe threshold is $K > 1 + 0.025/(\lambda \cdot 0.4) = 1 + 0.0625/\lambda$, yielding $K > 13.5$ at $\lambda{=}0.005$ and $K > 2.2$ at $\lambda{=}0.05$---consistent with our experimental observations (\Cref{sec:oracle}).
+For our default parameters ($\alpha{=}0.12$, $\beta{=}0.02$, $k_0{=}0.5$, $k_{\mathrm{base}}{=}0.10$), the catastrophe threshold is $K > 1 + 0.025/(\lambda \cdot 0.4) = 1 + 0.0625/\lambda$, yielding $K > 13.5$ at $\lambda{=}0.005$ and $K > 2.25$ at $\lambda{=}0.05$---consistent with our experimental observations (\Cref{sec:oracle}).
 
 \begin{theorem}[BKT-Bandit Posterior Concentration]
 \label{thm:bkt}
@@ -180,6 +180,7 @@ Under BKT-Bandit's posterior decay mechanism with rate $e^{-\lambda}$, the effec
     \Pr\bigl[|\mu_i - k_i^*| > \varepsilon\bigr] \leq 2\exp\!\bigl(-2\, n_{\mathrm{eff}}\, \varepsilon^2\bigr).
     \label{eq:bkt_concentration}
 \end{equation}
+This bound is conservative (valid): the geometric decay makes $n_{\mathrm{eff}}$ a lower bound on information content, so the right-hand side is an upper bound on the actual concentration probability.
 Consequently, BKT-Bandit achieves Bayesian regret $\mathcal{O}(K\sqrt{T \log T})$.
 \end{theorem}
 
