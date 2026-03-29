@@ -127,6 +127,15 @@ Based on the regime analysis and Theorem~\ref{thm:catastrophe}, we provide a sim
 \textbf{(1)}~If the decay rate is high ($\lambda \geq 0.05$) or $K > 1 + \frac{(\alpha-\beta)k_0(1-k_0)}{\lambda(k_0-k_{\mathrm{base}})}$, use F-UCB (urgency dominates).
 \textbf{(2)}~If $K \leq 20$ with moderate decay ($\lambda \leq 0.01$), use BKT-Bandit (posterior tracking excels).
 \textbf{(3)}~If the regime is unknown or $K$ is large, use MetaSelector (stable rank~3 across all $K \geq 50$ configurations, no regime knowledge required).
+\textbf{(4)}~If equity is required (e.g., mandated coverage), use EquiBandit (\Cref{sec:equity}).
+\Cref{fig:flowchart} summarizes this decision tree.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\textwidth]{fig_flowchart.png}
+  \caption{Algorithm selection decision tree based on regime analysis. High decay favors F-UCB; low decay with few topics favors BKT-Bandit (or EquiBandit if equity matters); large $K$ or unknown regime favors MetaSelector.}
+  \label{fig:flowchart}
+\end{figure}
 
 \subsection{Real Data Validation}
 \label{sec:real_data}
@@ -176,7 +185,14 @@ At $K{=}20$, $\lambda{=}0.01$, BKT-Bandit achieves the highest mean knowledge ($
 \textbf{EquiBandit} ($\eta{=}0.1$) reduces the Gini coefficient from $0.447$ to $\mathbf{0.034}$ while incurring a $-0.013$ ($-6.8\%$) drop in mean knowledge ($\bar{k}{=}0.180$).
 By contrast, Random achieves Gini${=}0.002$ but at $\bar{k}{=}0.171$, an $-11.4\%$ knowledge penalty relative to BKT-Bandit.
 At low decay ($K{=}20$, $\lambda{=}0.005$), the equity improvement is essentially free: Gini drops from $0.104$ to $0.008$ with $<0.1\%$ knowledge loss.
-EquiBandit thus occupies an efficient point on the knowledge--equity Pareto frontier: near-uniform exposure with strong knowledge retention.
+EquiBandit thus occupies an efficient point on the knowledge--equity Pareto frontier: near-uniform exposure with strong knowledge retention (\Cref{fig:pareto}).
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{fig_pareto.png}
+  \caption{Knowledge--equity Pareto frontier at $K{=}20$. Left: $\lambda{=}0.01$. Right: $\lambda{=}0.05$. EquiBandit (orange star) achieves near-BKT knowledge with near-Random equity. BKT-Bandit (green circle) achieves the highest knowledge but worst equity.}
+  \label{fig:pareto}
+\end{figure}
 
 The equity penalty $\eta \cdot \max(0,\, n_i/\bar{n} - 1)$ in EquiBandit's score (\Cref{sec:novel}) discourages over-concentration without abandoning weakness-targeting.
 Practitioners in equity-sensitive settings (e.g., standardized test preparation with mandated coverage requirements) should prefer EquiBandit over BKT-Bandit; in unconstrained settings, BKT-Bandit maximizes raw knowledge.

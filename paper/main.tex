@@ -16,6 +16,7 @@
 \usepackage{amssymb}
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}
+\newtheorem{remark}[theorem]{Remark}
 \usepackage{nicefrac}
 \usepackage{microtype}
 \usepackage{xcolor}
@@ -112,8 +113,8 @@
 \item {\bf Theory/Proofs}
 \begin{itemize}
   \item[] Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (or sketch) proof?
-  \item[] Answer: \answerNA{}
-  \item[] Justification: This is primarily an empirical study. The Greedy-Min catastrophe is demonstrated empirically rather than proved theoretically.
+  \item[] Answer: \answerYes{}
+  \item[] Justification: Theorems~1--4 include proof sketches in Section~\ref{sec:theory} and full proofs in Appendix~\ref{app:proofs}. Theorem~1 states explicit conditions; Theorems~2--3 state regret bounds; Theorem~4 proves a minimax lower bound via reduction.
 \end{itemize}
 
 \item {\bf Experiments}
