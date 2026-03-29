@@ -110,7 +110,23 @@ Full theoretical + numerical audit of all 4 theorems via scripts/verify_theorems
 - NeurIPS checklist Theory item: N/A → Yes (4 theorems)
 - Remark environment defined; PDF compiles clean: 24 pages, 0 errors
 
-**PAPER STATUS: COMPLETE. All tasks done. Ready for submission.**
+**Figure audit (commit 37a8637):**
+6 of 9 figures were stale or empty — all regenerated from IBEX data:
+- `fig_sensitivity`: was EMPTY (blank axes) → now shows F-UCB/BKT/MetaSelector curves
+- `fig_oracle_catastrophe`: was "out of 16" → correct rank count from 13 algos
+- `fig_regime_heatmap`: was "Adapt-Whittle"/"Oracle" → correct names + IBEX values
+- `fig_real_data`: was "PD-Whittle"/"Oracle" + placeholder data → fitted_sim data
+- `fig_temporal`: "Oracle" → "Greedy-Min"
+- `fig_scaling`: placeholder values → IBEX values
+- `table_real_data.tex`: entirely fabricated (BKT 0.893→0.666 on Duolingo) → replaced
+- Real data text rewritten: Leitner leads Duolingo; ASSISTments tightly clustered
+
+**PAPER STATUS: COMPLETE. All tables, figures, and text verified against IBEX data.**
+
+**Remaining next steps (non-blocking, for future sessions):**
+- Consider running EquiBandit at K=50,100 for full consistency table coverage
+- Consider live deployment evaluation (mentioned as future work in paper)
+- Submission logistics: choose venue (ICLR primary / ICML backup), prepare supplementary zip
 
 ---
 
