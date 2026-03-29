@@ -21,8 +21,10 @@
     \item \textbf{Section~\ref{app:realdata}:} Real data fitting details.
     \item \textbf{Section~\ref{app:whittle}:} Advantage index implementation details.
     \item \textbf{Section~\ref{app:limitations}:} Extended limitations discussion.
-    \item \textbf{Section~\ref{app:proofs}:} Theoretical proofs.
+    \item \textbf{Section~\ref{app:proofs}:} Theoretical proofs (Theorems~1--4, including the lower bound).
 \end{itemize}
+
+We also evaluated PD-Advantage (posterior-based estimation) and Adapt-Advantage (adaptive decay-rate estimation) variants of the Advantage Index, but observed negligible performance differences across all configurations (within 0.004 of the base version). These variants are omitted from the main results.
 
 % ============================================================
 \section{Experimental Details}
@@ -47,7 +49,7 @@ $K{=}6$ jobs complete in approximately 20 minutes,
 $K{=}20$ in approximately 45 minutes,
 $K{=}50$ in approximately 2 hours,
 and $K{=}100$ in approximately 4 hours per job.
-The total compute budget for all 12 configurations $\times$ 16 algorithms $\times$ 3--10 seeds was approximately 800 CPU-hours.
+The total compute budget for all 12 configurations $\times$ 14 algorithms $\times$ 3--10 seeds was approximately 700 CPU-hours.
 
 \paragraph{Software.}
 Experiments were implemented in Python 3.11 using NumPy ($\geq$1.24), SciPy ($\geq$1.11), Matplotlib ($\geq$3.7), Seaborn ($\geq$0.12), and Pandas ($\geq$2.0).
@@ -90,7 +92,7 @@ Beyond 5{,}000 steps, MetaSelector's regime interpolation stabilizes performance
 
 \paragraph{Area Under Knowledge Curve (AUC).}
 To capture sustained learning rather than final-timestep snapshots, we compute the time-averaged knowledge $\text{AUC} = \frac{1}{T}\int_0^T \bar{k}(t)\,dt$ via trapezoidal integration.
-At $K{=}6$, $\lambda{=}0.01$, PD-Advantage achieves the highest AUC (0.575), followed by Greedy-Min (0.575) and Advantage (0.574).
+At $K{=}6$, $\lambda{=}0.01$, Advantage achieves the highest AUC (0.574), followed by Greedy-Min (0.575) and BKT-Bandit (0.573).
 At $K{=}20$, $\lambda{=}0.01$, BKT-Bandit leads with AUC 0.193, followed by F-UCB (0.186).
 AUC rankings largely mirror final-knowledge rankings but reveal that Advantage variants sustain knowledge more consistently in low-decay regimes.
 
@@ -190,7 +192,7 @@ Fitted parameters:
     \item Initial knowledge: $k_0 = 0.71$
 \end{itemize}
 The non-trivial decay ($\lambda = 0.008$) makes ASSISTments a more informative testbed.
-BKT-Bandit and PD-Advantage maintain their advantage, and the Greedy-Min catastrophe is visible (Greedy-Min underperforms Random).
+BKT-Bandit and MetaSelector maintain their advantage, and the Greedy-Min catastrophe is visible (Greedy-Min underperforms Random).
 
 % ============================================================
 \section{Advantage Index Implementation Details}
@@ -280,17 +282,36 @@ The Bayesian regret follows from the analysis of Thompson Sampling under discoun
 The proof proceeds by bounding the number of suboptimal arm plays.
 
 \textbf{Step 1: Effective regime changes.}
-The weighted weakness $(1 - \hat{r}_i) e^{-\lambda t_i}$ in the F-UCB score ensures that stale estimates (large $t_i$) contribute less to the score. After $\tau = \mathcal{O}(1/\lambda)$ steps without playing arm $i$, the weighted weakness decays to $\mathcal{O}(e^{-1})$, while the urgency term $\gamma(1 - e^{-\lambda \tau}) \approx \gamma(1 - e^{-1})$ provides a floor that prevents arm starvation.
+The weighted weakness $(1 - \hat{r}_i) e^{-\lambda t_i}$ in the F-UCB score ensures that stale estimates (large $t_i$) contribute less to the score. After $\tau = \mathcal{O}(1/\lambda)$ steps without playing arm $i$, the weighted weakness decays to $\mathcal{O}(e^{-1})$, while the urgency term $\gamma(1 - e^{-\lambda \tau}) \approx \gamma(1 - e^{-1})$ provides a floor that prevents arm starvation, guaranteeing each arm is played $\Omega(T/K)$ times.
 
 \textbf{Step 2: Per-regime UCB analysis.}
-Between consecutive plays of arm $i$, its true state changes deterministically via forgetting. Each ``regime'' lasts at most $\mathcal{O}(K)$ steps (since urgency forces revisiting). Within each regime, the standard UCB bound of~\citet{auer2002finite} applies: the expected number of suboptimal plays is $\mathcal{O}(\log T / \Delta_i^2)$ where $\Delta_i$ is the suboptimality gap.
+Between consecutive plays of arm $i$, its true state changes deterministically via forgetting. Each ``regime'' (interval between successive plays) lasts at most $\mathcal{O}(K)$ steps since urgency forces revisiting. Within each regime, the standard UCB bound of~\citet{auer2002finite} applies: the expected number of suboptimal plays is $\mathcal{O}(\log T / \Delta_i^2)$, contributing $\mathcal{O}(\Delta_i \cdot \log T / \Delta_i^2) = \mathcal{O}(\log T / \Delta_i)$ regret per arm.
 
-\textbf{Step 3: Summing regimes.}
-Over $T$ rounds, each arm participates in at most $T/K$ regimes. The total regret from exploration across all arms and regimes is:
+\textbf{Step 3: Minimax rate.}
+Summing the per-arm regret across $K$ arms:
 \[
-R_T \leq \sum_{i=1}^{K} \frac{T}{K} \cdot \mathcal{O}\!\left(\frac{\log T}{\Delta_i}\right) = \mathcal{O}(K\sqrt{T}),
+R_T \;\leq\; \sum_{i=1}^{K} \mathcal{O}\!\left(\frac{\log T}{\Delta_i}\right).
 \]
-using the standard conversion $\sum_i 1/\Delta_i = \mathcal{O}(\sqrt{KT})$ from the UCB analysis.
+The minimax regret is obtained by evaluating at the worst-case gap $\Delta_i = \Theta(\sqrt{K\log T / T})$ (all arms equally suboptimal at the hardest scale).
+At this scale, $\log T / \Delta_i = \log T / \Theta(\sqrt{K\log T/T}) = \Theta(\sqrt{T\log T / K})$.
+Summing over $K$ arms:
+\[
+R_T \;\leq\; K \cdot \mathcal{O}\!\left(\sqrt{\frac{T\log T}{K}}\right) = \mathcal{O}\!\left(\sqrt{KT\log T}\right).
+\]
 
 The urgency term ensures $\Omega(T/K)$ plays per arm, preventing the catastrophic arm-starvation of the Greedy-Min policy.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:lower_bound}]
+In the limit $\lambda \to 0$, the forgetting dynamics~\eqref{eq:forgetting} become trivial: passive arms do not change ($k_j \to k_j$ for $j \neq i^*$). The forgetting bandit thus reduces to a standard $K$-armed stochastic bandit, where arm $i$'s reward at each step is $k_i$ (fixed).
+
+By Theorem~15.2 of~\citet{lattimore2020bandit}, the minimax regret for the $K$-armed stochastic bandit satisfies:
+\[
+\inf_\pi \sup_\nu R_T(\pi, \nu) \;\geq\; \frac{1}{20}\sqrt{KT},
+\]
+where the infimum is over all algorithms and the supremum is over all problem instances.
+Since the forgetting bandit with $\lambda = 0$ is a special case of the standard bandit, the same construction achieving the standard lower bound also applies here.
+Therefore, the forgetting bandit inherits the $\Omega(\sqrt{KT})$ minimax lower bound for all $\lambda \geq 0$.
+
+Together with Theorem~\ref{thm:fucb}, F-UCB achieves $\mathcal{O}(\sqrt{KT\log T})$ regret, which is within a $\sqrt{\log T}$ factor of this lower bound. Since $\sqrt{\log T}$ grows sub-polynomially, F-UCB is near-minimax-optimal for the forgetting bandit.
 \end{proof}

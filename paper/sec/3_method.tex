@@ -1,7 +1,7 @@
 \section{Methodology}
 \label{sec:method}
 
-We formalize the adaptive question selection problem and describe the 16 algorithms evaluated in our study.
+We formalize the adaptive question selection problem and describe the 14 algorithms evaluated in our study.
 
 \subsection{Problem Formulation}
 \label{sec:formulation}
@@ -129,7 +129,7 @@ We solve the single-arm MDP via value iteration on a discretized state space ($M
 The arm with the highest advantage index is selected at each step.
 Unlike classical Whittle indices~\citep{whittle1988restless}, which require a Lagrangian relaxation and verified indexability, our advantage index is a heuristic value-difference that does not assume indexability.
 Empirically, the single-arm value function exhibits threshold structure (high advantage for low-knowledge states, low for high-knowledge states), suggesting approximate indexability holds in practice.
-We evaluate two variants: \textbf{PD-Advantage} (with posterior-based knowledge estimation) and \textbf{Adapt-Advantage} (with online decay-rate adaptation).
+We tested posterior-based and adaptive variants with negligible performance differences; we report the base version.
 
 \paragraph{MetaSelector.}
 MetaSelector maintains a portfolio of $M$ base selectors (BKT-Bandit, F-UCB, Advantage Index, Leitner, and Random in our experiments).
@@ -142,6 +142,15 @@ MetaSelector then scores each unique candidate using a unified formula that comb
 where $\mu_i$ and $\sigma_i$ are the posterior mean and standard deviation from a Beta posterior with forgetting (as in BKT-Bandit), and $t_i$ is the time since arm $i$ was last played.
 The category with the highest score is selected.
 This design connects to Optimistic Online Mirror Descent~\citep{orabona2025online}: the urgency term acts as a ``hint'' about future losses from decay, while the expert candidates restrict the action set from $K$ to at most $M$ alternatives, reducing effective regret~\citep{orabona2025online}.
+
+\paragraph{EquiBandit.}
+EquiBandit extends BKT-Bandit with an exposure-equity penalty to address the equity--efficiency tradeoff observed in our experiments (\Cref{sec:regime}).
+The score penalizes categories that have received disproportionately many quizzes:
+\begin{equation}
+    s_i^{\text{equi}} = (1 - \mu_i) + c \cdot \sigma_i - \eta \cdot \max\!\left(0,\; \frac{n_i}{\bar{n}} - 1\right),
+\end{equation}
+where $n_i$ is the number of times category $i$ has been quizzed, $\bar{n}$ is the average across categories, and $\eta = 0.1$ is the equity weight.
+This regularizer discourages over-concentration on a subset of categories without abandoning weakness-targeting entirely.
 
 \subsection{Theoretical Analysis}
 \label{sec:theory}
@@ -180,9 +189,28 @@ The geometric decay $\alpha_i \leftarrow 1 + (\alpha_i - 1) e^{-\lambda}$ acts a
 
 \begin{theorem}[F-UCB Sublinear Regret]
 \label{thm:fucb}
-F-UCB with known decay rate $\lambda$ achieves cumulative regret $\mathcal{O}(K\sqrt{T})$ relative to the best fixed-arm policy, provided $\lambda > 0$.
+F-UCB with known decay rate $\lambda$ achieves cumulative regret $\mathcal{O}(\sqrt{KT\log T})$ relative to the best fixed-arm policy, provided $\lambda > 0$.
 \end{theorem}
 
 \begin{proof}[Proof sketch]
-The key insight is that the exponential decay $e^{-\lambda t_i}$ in the F-UCB score~\eqref{eq:fucb} ensures that stale weakness estimates are automatically discounted. This bounds the number of ``effective regime changes'' per arm to $\mathcal{O}(\sqrt{T})$. Within each regime, the standard UCB analysis of~\citet{auer2002finite} applies with exploration bonus $\mathcal{O}(\sqrt{\log T / n_i})$. Summing across $K$ arms and $\mathcal{O}(\sqrt{T})$ regimes per arm yields the $\mathcal{O}(K\sqrt{T})$ bound. Crucially, the urgency term $\gamma(1 - e^{-\lambda t_i})$ prevents the pathological arm-starvation that causes the Greedy-Min catastrophe (\Cref{thm:catastrophe}), ensuring each arm receives $\Omega(T/K)$ plays (Supplementary~\ref{app:proofs}).
+The exponential decay $e^{-\lambda t_i}$ in the F-UCB score~\eqref{eq:fucb} discounts stale estimates and bounds effective regime changes per arm to $\mathcal{O}(1/\lambda)$. Within each regime, standard UCB analysis~\citep{auer2002finite} gives $\mathcal{O}(\log T/\Delta_i)$ suboptimal plays per arm. Evaluating at the minimax-optimal gap scale $\Delta_i = \Theta(\sqrt{K\log T / T})$, the per-arm regret is $O(\log T / \Delta_i) = O(\sqrt{T\log T / K})$, and summing over $K$ arms yields $K \cdot O(\sqrt{T\log T/K}) = O(\sqrt{KT\log T})$. The urgency term $\gamma(1-e^{-\lambda t_i})$ prevents arm starvation, guaranteeing $\Omega(T/K)$ plays per arm and avoiding the Greedy-Min catastrophe (\Cref{thm:catastrophe}). Full proof in Supplementary~\ref{app:proofs}.
 \end{proof}
+
+\begin{theorem}[Minimax Lower Bound]
+\label{thm:lower_bound}
+Any algorithm $\pi$ for the $K$-armed forgetting bandit with horizon $T$ and decay rate $\lambda \geq 0$ incurs expected cumulative regret relative to the best fixed-arm policy:
+\begin{equation}
+    R_T(\pi) \;\geq\; \Omega\!\left(\sqrt{KT}\right).
+    \label{eq:lower_bound}
+\end{equation}
+Consequently, F-UCB is minimax-optimal up to $\mathcal{O}(\sqrt{\log T})$ factors.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Any forgetting-bandit instance with $\lambda \to 0$ reduces exactly to a $K$-armed stochastic bandit (no arm transitions when not played). By Theorem~15.2 of~\citet{lattimore2020bandit}, the minimax regret for $K$-armed bandits is $\Omega(\sqrt{KT})$. Since the forgetting bandit strictly generalizes the standard bandit, the lower bound is inherited.
+Together with \Cref{thm:fucb}, F-UCB achieves $\mathcal{O}(\sqrt{KT\log T})$, matching this lower bound up to $\sqrt{\log T}$. Full proof in Supplementary~\ref{app:proofs}.
+\end{proof}
+
+\begin{remark}
+In the high-decay regime ($\lambda \gg \sqrt{K/T}$), forgetting dominates exploration: each step where the optimal arm is idle costs $\lambda(k^* - k_{\mathrm{base}})$ in recovered knowledge, creating an additional penalty proportional to $\lambda T$ for algorithms forced to explore. This regime is precisely where F-UCB's urgency term $\gamma(1-e^{-\lambda t_i})$ provides the largest empirical gains (Theorem~\ref{thm:catastrophe}, \Cref{sec:regime}).
+\end{remark}

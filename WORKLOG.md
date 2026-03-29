@@ -1,5 +1,49 @@
 # RLUCB NeurIPS Extension — Worklog
 
+## Session 8 — 2026-03-29: Final Additions Plan (Items 1–5)
+
+### Status entering session
+- EquiBandit code complete (exposure-equity penalty, η=0.1): Gini 0.444→0.101 at K=20 λ=0.01
+- Comparison table (table_comparison.tex) created ✓
+- Algorithm count audit: 14 algorithms ✓
+- Still needed: lower bound theorem, EquiBandit in intro/abstract, IBEX experiments for EquiBandit tables
+
+### Changes made this session
+
+**Abstract (0_abstract.tex)**
+- Updated "four novel algorithms" → "five novel algorithms", added EquiBandit description
+- Updated theory claim: F-UCB O(√(KT log T)) upper bound + Ω(√(KT)) minimax lower bound
+
+**Intro (1_intro.tex)**
+- Algorithm list paragraph updated to include EquiBandit as 5th novel algorithm
+- Contribution 1: added Theorem 4 (minimax lower bound Ω(√(KT)), F-UCB near-optimal)
+- Contribution 2: "Four novel algorithms" → "Five novel algorithms", added EquiBandit's Gini result
+
+**Methods (3_method.tex)**
+- **Theorem 3 tightened**: O(K√T) → O(√(KT log T)) (correct minimax UCB rate)
+  - Proof sketch fixed: replaced incorrect Cauchy-Schwarz with clean minimax-gap argument
+  - Old proof had a circular step ("standard conversion"); now uses Δ_i = Θ(√(K log T/T)) explicitly
+- **Theorem 4 added (Minimax Lower Bound)**: R_T(π) ≥ Ω(√(KT)) for all λ ≥ 0
+  - Via reduction: λ→0 forgetting bandit reduces to standard K-armed bandit; inherits Lattimore & Szepesváry Thm 15.2
+  - Combined with Thm 3: F-UCB is near-minimax-optimal up to √(log T)
+  - **Dropped Ω(λT) component**: the argument "arm i* is idle for (K-1)/K fraction of time" is WRONG for general algorithms (a smart algorithm can identify i* quickly and only explore O(log T) steps). Replaced with a Remark explaining the high-decay regime intuition without overclaiming.
+
+**Supplementary (supplementary.tex)**
+- Updated table of contents to mention Theorem 4
+- Theorem 3 proof Step 3 fixed: minimax-gap argument (correct) replaces wrong Cauchy-Schwarz
+- Theorem 4 proof: clean reduction from standard K-armed bandit; removed flawed Ω(λT) part
+
+**table_comparison.tex**
+- Year 2025 → 2026 for ForgetBandit row
+
+### Still TODO (needs IBEX)
+- EquiBandit IBEX experiments (6 jobs: K=6,20 × λ=0.005,0.01,0.05)
+- Add EquiBandit row to table_main_results.tex and table_consistency.tex
+- Pareto figure (avg_knowledge vs Gini) for all 14 algorithms
+- Flowchart (Item 4): decision tree for algorithm selection by (K, λ) regime
+
+---
+
 ## Session 7 — 2026-03-19
 
 ### Full IBEX Results: 14 Algorithms (42 jobs, all succeeded)
