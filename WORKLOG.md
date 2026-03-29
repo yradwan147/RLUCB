@@ -121,11 +121,24 @@ Full theoretical + numerical audit of all 4 theorems via scripts/verify_theorems
 - `table_real_data.tex`: entirely fabricated (BKT 0.893→0.666 on Duolingo) → replaced
 - Real data text rewritten: Leitner leads Duolingo; ASSISTments tightly clustered
 
-**PAPER STATUS: COMPLETE. All tables, figures, and text verified against IBEX data.**
+**Experiment audit (commit cf862e8):**
+- Sensitivity text fix: BKT "max degradation <0.001" → "<0.004" (actual Δ=+0.0036 at 2×λ)
+- Verified: EquiBandit, Discounted TS, Lookahead Oracle never run on real data
+- Verified: Sensitivity only had 1 seed (s42)
 
-**Remaining next steps (non-blocking, for future sessions):**
-- Consider running EquiBandit at K=50,100 for full consistency table coverage
-- Consider live deployment evaluation (mentioned as future work in paper)
+**Remaining IBEX script (commit 7a5891c): `bash scripts/ibex_remaining.sh` — 34 jobs:**
+1. EquiBandit K=50,100 (18 jobs) — fills scaling table + consistency table gaps
+2. Real data: EquiBandit + Discounted TS + Lookahead Oracle (6 jobs) — completes real data coverage
+3. Sensitivity: 2 extra seeds (10 jobs) — enables error bars on sensitivity figure
+
+**PAPER STATUS: COMPLETE. All current tables/figures/text verified against IBEX data.**
+
+**After IBEX jobs finish:**
+- Update `table_scaling.tex`: fill EquiBandit K=50,100 cells (currently "---")
+- Update `table_consistency.tex`: add EquiBandit row (will have all 12 configs)
+- Update `table_real_data.tex`: add Discounted TS + Lookahead Oracle rows if interesting
+- Update `fig_sensitivity.png`: regenerate with 3-seed error bars
+- Recompile PDF
 - Submission logistics: choose venue (ICLR primary / ICML backup), prepare supplementary zip
 
 ---
