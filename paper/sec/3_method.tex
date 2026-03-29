@@ -96,14 +96,6 @@ The score is:
 where $\gamma = 1.0$ controls the urgency weight and $\lambda$ is the known decay rate.
 The first term downweights the observed weakness estimate as it becomes stale; the second term increases urgency for arms that have been decaying longer; the third is the standard UCB exploration bonus.
 
-\paragraph{F-UCB (Decay).}
-F-UCB (Decay) is an ablation of F-UCB that retains only the decay-urgency terms, omitting the UCB exploration bonus:
-\begin{equation}
-    s_i^{\text{F-UCB(D)}} = (1 - \hat{r}_i) \cdot e^{-\lambda t_i} + \gamma \cdot (1 - e^{-\lambda t_i}).
-    \label{eq:fucb_decay}
-\end{equation}
-Comparing F-UCB (Decay) to full F-UCB isolates the contribution of the exploration bonus in the forgetting setting.
-
 \paragraph{BKT-Bandit.}
 BKT-Bandit maintains a Bayesian posterior over each arm's mastery probability, augmented with forgetting.
 Each arm $i$ has parameters $(\alpha_i, \beta_i)$ of a Beta distribution, updated on observations:

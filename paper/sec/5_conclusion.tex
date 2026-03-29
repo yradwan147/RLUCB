@@ -2,12 +2,12 @@
 \label{sec:conclusion}
 
 We presented \ours, a comprehensive framework for adaptive question selection under forgetting dynamics, and evaluated 14 bandit algorithms across 12 synthetic configurations and 2 real educational datasets.
-Our study reveals that no single algorithm dominates all regimes: BKT-Bandit achieves top-3 in 10/12 configurations (out of 14 algorithms) with an average $+8.2\%$ improvement over random selection, F-UCB delivers the largest gains ($+42\%$) at high decay rates, and MetaSelector provides the most consistent performance (top-5 in 11/12) through principled regime interpolation.
-For equity-sensitive deployments, EquiBandit reduces the topic-exposure Gini coefficient from $0.449$ to $0.101$ at $K{=}20$ with only a $-1.7\%$ knowledge loss, demonstrating that fairness and efficiency need not be in fundamental conflict.
+Our study reveals that no single algorithm dominates all regimes: BKT-Bandit achieves top-3 in 10/12 configurations (out of 14 algorithms) with an average $+8.2\%$ improvement over random selection, F-UCB delivers the largest gains ($+42\%$) at high decay rates, and MetaSelector provides the most consistent performance (top-3 at all $K{\geq}50$ configurations) through principled regime interpolation.
+For equity-sensitive deployments, EquiBandit reduces the topic-exposure Gini coefficient from $0.447$ to $0.034$ at $K{=}20$, $\lambda{=}0.01$, with a $-6.8\%$ knowledge cost; at low decay the equity improvement is essentially free, demonstrating that fairness and efficiency need not be in fundamental conflict.
 
 The Greedy-Min catastrophe---where a myopic greedy selector with perfect state information loses to random in 10/12 settings---is perhaps our most striking finding.
 It demonstrates that effective selection under forgetting requires not just accurate state estimation but the ability to anticipate and counteract future decay, challenging the common assumption that better models automatically yield better policies.
-A Lookahead Oracle that performs one-step planning with perfect state information recovers strong performance (e.g., $\bar{k}{=}0.248$ vs Greedy-Min's $0.122$ at $K{=}6$, $\lambda{=}0.05$), confirming that \emph{myopia}---not state observability---is the root cause of the catastrophe.
+A Lookahead Oracle that performs one-step planning with perfect state information recovers strong performance (e.g., $\bar{k}{=}0.248$ vs Greedy-Min's $0.124$ at $K{=}6$, $\lambda{=}0.05$), confirming that \emph{myopia}---not state observability---is the root cause of the catastrophe.
 
 This work has several limitations.
 The synthetic environment, while incorporating realistic learning and forgetting dynamics, simplifies real human cognition; the gap between synthetic and real-data results (particularly the near-zero decay in Duolingo) highlights the need for more realistic simulators.

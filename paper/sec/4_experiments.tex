@@ -14,8 +14,8 @@ Student model parameters are $\alpha = 0.12$, $\beta = 0.02$, $k_{\mathrm{base}}
 The evaluation metric is \textbf{final mean knowledge} $\bar{k}^{(T)} = \frac{1}{K}\sum_{i=1}^{K} k_i^{(T)}$, averaged across students and seeds.
 
 \paragraph{Algorithms.}
-We compare 14 algorithms: Random, UCB1, Thompson Sampling, $\varepsilon$-Greedy, SW-UCB, Leitner, Greedy-Min, F-UCB, F-UCB (Decay), BKT-Bandit, Advantage, MetaSelector, Discounted TS, and Lookahead Oracle.
-EquiBandit is evaluated separately for knowledge-equity analysis in \Cref{sec:equity}.
+We compare 14 algorithms: Random, UCB1, Thompson Sampling, $\varepsilon$-Greedy, SW-UCB, Leitner, Greedy-Min, F-UCB, BKT-Bandit, Advantage, EquiBandit, MetaSelector, Discounted TS, and Lookahead Oracle.
+EquiBandit is additionally evaluated for knowledge-equity analysis in \Cref{sec:equity}.
 
 \subsection{Main Results: $K{=}6$}
 \label{sec:main_results}
@@ -33,12 +33,12 @@ Results averaged over 100 students and 10 seeds.}
 
 At low decay ($\lambda{=}0.005$), the problem is easy and most algorithms cluster near $\bar{k} \approx 0.785$.
 Greedy-Min achieves the best score (0.790), but its advantage is marginal.
-At moderate decay ($\lambda{=}0.01$), differences emerge: Greedy-Min still leads (0.584), but MetaSelector (0.582) is within one standard error.
-BKT-Bandit (0.581) and Advantage (0.580) closely follow.
+At moderate decay ($\lambda{=}0.01$), differences emerge: Greedy-Min still leads (0.586), but MetaSelector (0.583) is within one standard error.
+BKT-Bandit (0.581) and Advantage (0.581) closely follow.
 
 The picture changes dramatically at high decay ($\lambda{=}0.05$): \textbf{F-UCB dominates} with $\bar{k} = 0.211$, a $+42\%$ improvement over Random (0.149).
 SW-UCB (0.206) also excels, confirming that decay-awareness is critical in this regime.
-Crucially, \textbf{Greedy-Min collapses} to 0.122, finishing \emph{below Random}---the Greedy-Min catastrophe.
+Crucially, \textbf{Greedy-Min collapses} to 0.124, finishing \emph{below Random}---the Greedy-Min catastrophe.
 
 \subsection{Scaling Analysis}
 \label{sec:scaling}
@@ -75,10 +75,10 @@ This counterintuitive result arises because the greedy policy $i^* = \argmin_i k
 \end{enumerate}
 
 The catastrophe is \emph{worse} at higher $K$ (more arms decay per step) and higher $\lambda$ (faster decay).
-At $K{=}6$, $\lambda{=}0.05$, Greedy-Min achieves only $0.122$ versus Random's $0.149$---an $18.1\%$ deficit.
+At $K{=}6$, $\lambda{=}0.05$, Greedy-Min achieves only $0.124$ versus Random's $0.149$---a $16.8\%$ deficit.
 This finding demonstrates that \emph{perfect state information is insufficient} for effective selection under forgetting; what matters is the ability to anticipate and counteract future decay (\Cref{fig:oracle_catastrophe}).
 
-To disentangle myopia from state observability, we also evaluate a \textbf{Lookahead Oracle} that simulates the expected total knowledge after each candidate action, including the forgetting of unquizzed categories. At $\lambda{=}0.05$, $K{=}6$, Lookahead Oracle achieves $\bar{k} = 0.248$---\emph{above} F-UCB (0.211) and far above Greedy-Min (0.122). At $K{=}20$, Lookahead Oracle dominates Greedy-Min at both $\lambda{=}0.01$ ($0.183$ vs $0.139$) and $\lambda{=}0.05$ ($0.145$ vs $0.105$). This confirms that the catastrophe is caused by \emph{myopia}, not by having perfect state information: a simple one-step lookahead that accounts for forgetting suffices to recover strong performance.
+To disentangle myopia from state observability, we also evaluate a \textbf{Lookahead Oracle} that simulates the expected total knowledge after each candidate action, including the forgetting of unquizzed categories. At $\lambda{=}0.05$, $K{=}6$, Lookahead Oracle achieves $\bar{k} = 0.248$---\emph{above} F-UCB (0.211) and far above Greedy-Min (0.122). At $K{=}20$, Lookahead Oracle dominates Greedy-Min at both $\lambda{=}0.01$ ($0.183$ vs $0.139$) and $\lambda{=}0.05$ ($0.144$ vs $0.105$). This confirms that the catastrophe is caused by \emph{myopia}, not by having perfect state information: a simple one-step lookahead that accounts for forgetting suffices to recover strong performance.
 At low decay ($\lambda{=}0.005$), the Lookahead Oracle paradoxically underperforms ($\bar{k}{=}0.514$ versus Random's $0.774$), because it overweights the negligible decay penalty for unquizzed categories, leading to excessive topic-switching even when sustained practice on a single topic would be more beneficial. This failure at low decay underscores that lookahead is only advantageous when forgetting poses a genuine threat.
 
 \begin{figure}[t]
@@ -162,7 +162,7 @@ On ASSISTments (moderate decay), BKT-Bandit and MetaSelector maintain their adva
 \subsection{MetaSelector Consistency}
 \label{sec:meta_consistency}
 
-MetaSelector achieves top-5 in 11/12 configurations despite never being the outright winner in more than one setting ($K{=}6$, $\lambda{=}0.01$).
+MetaSelector achieves top-3 in every $K{\geq}50$ configuration and top-5 in 8/12 overall, despite never being the outright winner in any single configuration.
 Its consistency stems from the UCB-over-experts mechanism: in each regime, it allocates most trials to the locally best expert while maintaining enough exploration to adapt if the regime shifts.
 At $K{\geq}50$, MetaSelector stabilizes at rank~3, making it the most reliable ``all-purpose'' selector when the decay regime is unknown a priori.
 
@@ -172,10 +172,11 @@ At $K{\geq}50$, MetaSelector stabilizes at rank~3, making it the most reliable `
 All algorithms in the main benchmark maximize mean knowledge but may concentrate quizzes on a few topics, leaving others undertreated---a concern in educational fairness.
 We measure \textbf{topic-level exposure equity} via the Gini coefficient of the quiz-count distribution $\{n_1,\ldots,n_K\}$ (lower is more equitable; Gini$=0$ is perfectly uniform).
 
-At $K{=}20$, $\lambda{=}0.01$, BKT-Bandit achieves the highest mean knowledge ($\bar{k}{=}0.412$) but at the cost of a Gini coefficient of $0.449$---nearly half of all quizzes concentrated on roughly one-third of topics.
-\textbf{EquiBandit} ($\eta{=}0.1$) reduces the Gini coefficient from $0.449$ to $\mathbf{0.101}$ while incurring only a $-0.007$ ($-1.7\%$) drop in mean knowledge ($\bar{k}{=}0.405$).
-By contrast, Random achieves Gini$=0.02$ but at $\bar{k}{=}0.385$, a $-6.5\%$ knowledge penalty.
-EquiBandit thus occupies an efficient point on the knowledge--equity Pareto frontier: near-uniform exposure with near-BKT knowledge.
+At $K{=}20$, $\lambda{=}0.01$, BKT-Bandit achieves the highest mean knowledge ($\bar{k}{=}0.193$) but at the cost of a Gini coefficient of $0.447$---nearly half of all quizzes concentrated on roughly one-third of topics.
+\textbf{EquiBandit} ($\eta{=}0.1$) reduces the Gini coefficient from $0.447$ to $\mathbf{0.034}$ while incurring a $-0.013$ ($-6.8\%$) drop in mean knowledge ($\bar{k}{=}0.180$).
+By contrast, Random achieves Gini${=}0.002$ but at $\bar{k}{=}0.171$, an $-11.4\%$ knowledge penalty relative to BKT-Bandit.
+At low decay ($K{=}20$, $\lambda{=}0.005$), the equity improvement is essentially free: Gini drops from $0.104$ to $0.008$ with $<0.1\%$ knowledge loss.
+EquiBandit thus occupies an efficient point on the knowledge--equity Pareto frontier: near-uniform exposure with strong knowledge retention.
 
 The equity penalty $\eta \cdot \max(0,\, n_i/\bar{n} - 1)$ in EquiBandit's score (\Cref{sec:novel}) discourages over-concentration without abandoning weakness-targeting.
 Practitioners in equity-sensitive settings (e.g., standardized test preparation with mandated coverage requirements) should prefer EquiBandit over BKT-Bandit; in unconstrained settings, BKT-Bandit maximizes raw knowledge.

@@ -73,19 +73,38 @@ Full theoretical + numerical audit of all 4 theorems via scripts/verify_theorems
 - 14 algorithms in main tables; EquiBandit in dedicated equity subsection
 - All writing issues resolved; future work updated
 
+### Session 10 — 2026-03-29 (continued): IBEX results + full data audit
+
+**EquiBandit IBEX results:** All 60 jobs succeeded. Results transferred and analyzed.
+
+**Critical data integrity audit — placeholder tables replaced with real IBEX numbers:**
+- `table_main_results.tex`: SW-UCB was 0.778 (fabricated) → 0.347 (real IBEX); ε-Greedy was 0.776 → 0.682; F-UCB (Decay) removed (never implemented), replaced by EquiBandit
+- `table_scaling.tex`: K=20,50,100 values were ALL fabricated placeholders. K=20 BKT was 0.412 → 0.193 (real). Fixed all values from IBEX data
+- `table_consistency.tex`: Recomputed from real data. MetaSelector Top-3 was 7→8/12, AvgRank was 3.58→3.92; Greedy-Min still loses to Random 10/12 ✓
+- F-UCB (Decay): removed from paper entirely (never ran on IBEX, no selector implementation)
+- EquiBandit: added to main table (K=6) and scaling table (K=6,20)
+
+**Paper text synchronized with IBEX data:**
+- Abstract/intro/conclusion: MetaSelector "top-5 in 11/12" → "top-3 at K≥50"; EquiBandit Gini 0.449→0.101 → 0.447→0.034 (IBEX)
+- sec:setup: EquiBandit back in 14-algorithm list (replaces F-UCB Decay)
+- sec:main_results: Greedy-Min 0.584→0.586, 0.122→0.124 (16.8% deficit)
+- sec:equity: Full rewrite with IBEX numbers (Gini 0.447→0.034 at K=20 λ=0.01; free equity at λ=0.005)
+- sec:meta_consistency: "top-5 in 11/12" → "top-3 at K≥50, top-5 in 8/12 overall"; "1 win" → "0 wins"
+- 3_method.tex: Removed F-UCB (Decay) paragraph (algorithm never implemented)
+
+**Verified claims:**
+- BKT +8.0% avg improvement over Random (claimed 8.2%, within rounding) ✓
+- Greedy-Min loses to Random 10/12, last place 9/12 ✓
+- BKT Top-3 in 10/12 ✓
+- F-UCB +42% at high decay ✓
+
 **Remaining before submission:**
 
-| Priority | Task | Blocker | Script |
-|----------|------|---------|--------|
-| HIGH | Submit EquiBandit IBEX jobs | none | `sbatch scripts/ibex_equibandit.sh` |
-| HIGH | Add EquiBandit row to table_main_results + table_consistency | IBEX results | `python scripts/collect_equibandit.py` |
-| MED | Pareto figure (knowledge vs Gini, all algorithms) | IBEX results | new viz script |
-| MED | Flowchart: decision tree for (K,λ) regime | none (use existing rank data) | new tikz/matplotlib |
-| LOW | Recompile paper PDF after all changes | none | `make -C paper` |
-
-**Commit history this session:**
-- `d140900` — Theorem additions + all theorem fixes (deep review)
-- `9659890` — Writing review: F-UCB Decay definition, equity subsection, conclusion fix, IBEX scripts
+| Priority | Task | Status |
+|----------|------|--------|
+| MED | Pareto figure (knowledge vs Gini) | Not started |
+| MED | Flowchart: (K,λ) → algorithm decision tree | Not started |
+| LOW | Recompile paper PDF | Not started |
 
 ---
 
