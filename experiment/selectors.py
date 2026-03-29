@@ -588,8 +588,10 @@ class EquiBanditSelector(BaseSelector):
             weakness = 1 - mean_k
             exploration = self.exploration_param * std
 
-            # Equity bonus: prioritize categories far from the mean
-            equity = self.equity_weight * (mean_k - mean_avg) ** 2
+            # Equity penalty: reduce score for over-exposed categories
+            avg_exposure = max(1.0, np.mean(self.attempts))
+            exposure_ratio = self.attempts[i] / avg_exposure if avg_exposure > 0 else 1.0
+            equity = -self.equity_weight * max(0.0, exposure_ratio - 1.0)
 
             score = weakness + exploration + equity
             if score > best_score:
@@ -1660,7 +1662,7 @@ SELECTOR_REGISTRY = {
         cfg.num_categories,
         exploration_param=cfg.exploration_param,
         decay_rate=cfg.selector_decay_rate,
-        equity_weight=0.5,
+        equity_weight=0.1,
     ),
     "discounted_ts": lambda cfg, rng: DiscountedTSSelector(
         cfg.num_categories,
