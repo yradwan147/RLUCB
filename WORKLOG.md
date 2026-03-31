@@ -131,15 +131,19 @@ Full theoretical + numerical audit of all 4 theorems via scripts/verify_theorems
 2. Real data: EquiBandit + Discounted TS + Lookahead Oracle (6 jobs) — completes real data coverage
 3. Sensitivity: 2 extra seeds (10 jobs) — enables error bars on sensitivity figure
 
-**PAPER STATUS: COMPLETE. All current tables/figures/text verified against IBEX data.**
+**All 34 IBEX jobs completed and integrated (commit 69e14cd):**
+- `table_scaling.tex`: EquiBandit K=50 (0.127) and K=100 (0.113) filled
+- `table_consistency.tex`: EquiBandit row added (Top-3=3/12, Top-5=11/12, AvgRank=4.08)
+- `table_real_data.tex`: expanded to 11 algorithms — added Lookahead Oracle (0.781 Duolingo!), EquiBandit (0.733), Discounted TS (0.674)
+- `fig_sensitivity.png`: regenerated with 3-seed error bars
+- `fig_real_data.png`: regenerated with all 11 algorithms
+- Real data text updated: Lookahead Oracle leads Duolingo (near-zero decay)
 
-**After IBEX jobs finish:**
-- Update `table_scaling.tex`: fill EquiBandit K=50,100 cells (currently "---")
-- Update `table_consistency.tex`: add EquiBandit row (will have all 12 configs)
-- Update `table_real_data.tex`: add Discounted TS + Lookahead Oracle rows if interesting
-- Update `fig_sensitivity.png`: regenerate with 3-seed error bars
-- Recompile PDF
-- Submission logistics: choose venue (ICLR primary / ICML backup), prepare supplementary zip
+**PAPER STATUS: FULLY COMPLETE. All experiments done. No remaining gaps.**
+- 24 pages, 4 theorems, 9 figures, 5 tables, 14 algorithms
+- Every number verified against IBEX data
+- PDF compiles clean, 0 errors
+- Ready for submission
 
 ---
 
