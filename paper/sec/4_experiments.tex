@@ -162,11 +162,11 @@ Our replay evaluation is model-based: when the bandit selects a skill with avail
 \input{tables/table_real_data}
 \end{table}
 
-\begin{figure}[t]\centering\includegraphics[width=0.95\textwidth]{fig_real_data.png}\caption{Real data evaluation on Duolingo (left) and ASSISTments (right). Performance differences are small, with Leitner and UCB1 leading on Duolingo.}\label{fig:real_data}\end{figure}
+\begin{figure}[t]\centering\includegraphics[width=0.95\textwidth]{fig_real_data.png}\caption{Real data evaluation on Duolingo (left) and ASSISTments (right). Lookahead Oracle and Leitner lead on Duolingo (near-zero decay); ASSISTments shows tight clustering across all algorithms.}\label{fig:real_data}\end{figure}
 
 \Cref{tab:real_data} reports results.
-On Duolingo (near-zero decay), Leitner leads ($\bar{k}{=}0.750$) due to its spaced repetition schedule aligning well with the near-absent forgetting.
-Performance differences are moderate, with all algorithms between $0.65$--$0.75$.
+On Duolingo (near-zero decay), Lookahead Oracle leads ($\bar{k}{=}0.781$) followed by Leitner ($0.750$), with all algorithms between $0.66$--$0.78$.
+The Lookahead Oracle's strong performance reflects the near-absent forgetting: one-step planning with perfect state information is highly effective when decay is negligible.
 On ASSISTments (moderate decay), all algorithms cluster tightly ($\bar{k} \approx 0.50$), and the Greedy-Min deficit is small ($0.498$ vs Random's $0.509$)---the moderate-decay catastrophe from synthetic experiments is attenuated by the model-based replay, where the fitted $\lambda{=}0.008$ is low (\Cref{fig:real_data}).
 
 \subsection{MetaSelector Consistency}
